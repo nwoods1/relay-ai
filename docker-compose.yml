@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: relay-postgres
+
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relaypassword
+      POSTGRES_DB: relay_ai
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql://relay:relaypassword@postgres:5432/relay_ai
+
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
