@@ -3,6 +3,11 @@ from sqlalchemy import text
 
 from app.core.database import engine
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.customers import router as customers_router
+from app.api.products import router as products_router
+from app.api.inventory import router as inventory_router
+from app.api.pricing import router as pricing_router
+
 
 app = FastAPI(
     title="Relay AI API",
@@ -18,6 +23,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(
+    customers_router,
+    prefix="/api"
+)
+
+app.include_router(
+    products_router,
+    prefix="/api"
+)
+
+app.include_router(
+    inventory_router,
+    prefix="/api"
+)
+
+app.include_router(
+    pricing_router,
+    prefix="/api"
+)
+
 
 @app.get("/")
 def root():
