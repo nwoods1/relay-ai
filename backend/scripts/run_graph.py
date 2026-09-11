@@ -2,7 +2,7 @@ from app.core.database import SessionLocal
 from app.graph.workflow import quote_workflow
 
 
-def test_graph():
+def run_graph():
     db = SessionLocal()
 
     try:
@@ -15,6 +15,7 @@ def test_graph():
                 "db": db,
             }
         )
+
         print(
             "Workflow status:",
             result["workflow_status"],
@@ -30,12 +31,32 @@ def test_graph():
 
         print(
             "Customer:",
-            result["customer"].name,
+            result["customer_data"]["customer_name"],
+        )
+
+        print(
+            "Customer code:",
+            result["customer_data"]["customer_code"],
         )
 
         print(
             "Product:",
-            result["product"].name,
+            result["product_data"]["product_name"],
+        )
+
+        print(
+            "SKU:",
+            result["product_data"]["sku"],
+        )
+
+        print(
+            "Inventory:",
+            result["inventory_data"],
+        )
+
+        print(
+            "Pricing:",
+            result["pricing_data"],
         )
 
         print(
@@ -58,4 +79,4 @@ def test_graph():
 
 
 if __name__ == "__main__":
-    test_graph()
+    run_graph()

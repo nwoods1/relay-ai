@@ -5,11 +5,14 @@ from app.graph.nodes import (
     parse_request_node,
     resolve_customer_node,
     resolve_product_node,
+    check_inventory_node,
+    get_pricing_node,
     build_quote_node,
     evaluate_approval_node,
     approved_path_node,
     approval_required_node,
 )
+
 
 def route_after_approval(
     state: QuoteWorkflowState,
@@ -19,6 +22,7 @@ def route_after_approval(
         return "approval_required"
 
     return "approved_path"
+
 
 workflow = StateGraph(
     QuoteWorkflowState
@@ -37,6 +41,16 @@ workflow.add_node(
 workflow.add_node(
     "resolve_product",
     resolve_product_node,
+)
+
+workflow.add_node(
+    "check_inventory",
+    check_inventory_node,
+)
+
+workflow.add_node(
+    "get_pricing",
+    get_pricing_node,
 )
 
 workflow.add_node(
@@ -77,6 +91,16 @@ workflow.add_edge(
 
 workflow.add_edge(
     "resolve_product",
+    "check_inventory",
+)
+
+workflow.add_edge(
+    "check_inventory",
+    "get_pricing",
+)
+
+workflow.add_edge(
+    "get_pricing",
     "build_quote",
 )
 
@@ -103,5 +127,6 @@ workflow.add_edge(
     "approval_required",
     END,
 )
+
 
 quote_workflow = workflow.compile()

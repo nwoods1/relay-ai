@@ -27,3 +27,7 @@ class QuoteWorkflowState(TypedDict, total=False):
     workflow_status: str | None
 
     error: str | None
+    customer_data: dict | None
+    product_data: dict | None
+    inventory_data: dict | None
+    pricing_data: dict | None

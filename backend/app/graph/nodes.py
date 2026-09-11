@@ -6,12 +6,22 @@ from app.llm.bedrock import parse_quote_request
 from app.services.ai_quote_service import (
     validate_parsed_quote_request,
 )
-from app.services.entity_resolution_service import (
-    resolve_customer,
-    resolve_product,
+from app.schemas.quote import QuoteResponse
+from app.tools.customer_tools import (
+    create_customer_lookup_tool,
 )
-from app.schemas.quote import QuoteRequest
-from app.services.quote_service import create_quote
+from app.tools.product_tools import (
+    create_product_lookup_tool,
+)
+from app.tools.quote_tools import (
+    create_quote_tool,
+)
+from app.tools.inventory_tools import (
+    create_inventory_lookup_tool,
+)
+from app.tools.pricing_tools import (
+    create_pricing_lookup_tool,
+)
 
 
 def parse_request_node(
@@ -42,16 +52,25 @@ def resolve_customer_node(
     logger.info(
         "LangGraph node: resolve_customer"
     )
-    
+
     parsed_request = state["parsed_request"]
 
-    customer = resolve_customer(
-        customer_name=parsed_request.customer_name,
-        db=state["db"],
+    customer_tool = (
+        create_customer_lookup_tool(
+            state["db"]
+        )
+    )
+
+    customer_data = customer_tool.invoke(
+        {
+            "customer_name": (
+                parsed_request.customer_name
+            )
+        }
     )
 
     return {
-        "customer": customer,
+        "customer_data": customer_data,
         "current_node": "resolve_customer",
     }
 
@@ -65,13 +84,22 @@ def resolve_product_node(
 
     parsed_request = state["parsed_request"]
 
-    product = resolve_product(
-        product_name=parsed_request.product_name,
-        db=state["db"],
+    product_tool = (
+        create_product_lookup_tool(
+            state["db"]
+        )
+    )
+
+    product_data = product_tool.invoke(
+        {
+            "product_name": (
+                parsed_request.product_name
+            )
+        }
     )
 
     return {
-        "product": product,
+        "product_data": product_data,
         "current_node": "resolve_product",
     }
 
@@ -84,18 +112,27 @@ def build_quote_node(
     )
 
     parsed_request = state["parsed_request"]
-    customer = state["customer"]
-    product = state["product"]
+    customer_data = state["customer_data"]
+    product_data = state["product_data"]
 
-    quote_request = QuoteRequest(
-        customer_code=customer.customer_code,
-        sku=product.sku,
-        quantity=parsed_request.quantity,
+    quote_tool = create_quote_tool(
+        state["db"]
     )
 
-    quote = create_quote(
-        quote_request=quote_request,
-        db=state["db"],
+    quote_data = quote_tool.invoke(
+        {
+            "customer_code": (
+                customer_data["customer_code"]
+            ),
+            "sku": product_data["sku"],
+            "quantity": (
+                parsed_request.quantity
+            ),
+        }
+    )
+
+    quote = QuoteResponse.model_validate(
+        quote_data
     )
 
     return {
@@ -136,4 +173,61 @@ def approval_required_node(
     return {
         "current_node": "approval_required",
         "workflow_status": "awaiting_approval",
+    }
+
+def check_inventory_node(
+    state: QuoteWorkflowState,
+) -> dict:
+
+    logger.info(
+        "LangGraph node: check_inventory"
+    )
+
+    inventory_tool = (
+        create_inventory_lookup_tool(
+            state["db"]
+        )
+    )
+
+    inventory_data = inventory_tool.invoke(
+        {
+            "sku": state["product_data"]["sku"]
+        }
+    )
+
+    return {
+        "inventory_data": inventory_data,
+        "current_node": "check_inventory",
+    }
+
+def get_pricing_node(
+    state: QuoteWorkflowState,
+) -> dict:
+
+    logger.info(
+        "LangGraph node: get_pricing"
+    )
+
+    pricing_tool = (
+        create_pricing_lookup_tool(
+            state["db"]
+        )
+    )
+
+    pricing_data = pricing_tool.invoke(
+        {
+            "customer_code": (
+                state["customer_data"][
+                    "customer_code"
+                ]
+            ),
+            "sku": (
+                state["product_data"]["sku"]
+            ),
+        }
+    )
+
+    return {
+        "pricing_data": pricing_data,
+        "current_node": "get_pricing",
     }

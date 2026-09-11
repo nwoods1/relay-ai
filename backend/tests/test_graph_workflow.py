@@ -41,8 +41,19 @@ def test_graph_runs_quote_workflow(
             == "JACKET-BETA-AR-M"
         )
 
+        assert (
+            result["inventory_data"]["total_available"]
+            == 89
+        )
+
+        assert (
+            result["pricing_data"]["pricing_tier"]
+            == "B"
+        )
+
     finally:
         db.close()
+
 
 @patch(
     "app.graph.nodes.parse_quote_request"
@@ -73,6 +84,16 @@ def test_graph_routes_to_approval(
         assert (
             result["workflow_status"]
             == "awaiting_approval"
+        )
+
+        assert (
+            result["inventory_data"]["total_available"]
+            == 89
+        )
+
+        assert (
+            result["pricing_data"]["pricing_tier"]
+            == "B"
         )
 
     finally:
