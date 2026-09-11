@@ -10,7 +10,7 @@ client = TestClient(app)
 
 
 @patch(
-    "app.services.ai_quote_service.parse_quote_request"
+    "app.graph.nodes.parse_quote_request"
 )
 def test_ai_quote(
     mock_parse_quote_request,
@@ -41,7 +41,7 @@ def test_ai_quote(
     assert data["sku"] == "JACKET-BETA-AR-M"
 
 @patch(
-    "app.services.ai_quote_service.parse_quote_request"
+    "app.graph.nodes.parse_quote_request"
 )
 def test_ai_quote_missing_quantity(
     mock_parse_quote_request,

@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.ai import NaturalLanguageQuoteRequest
 from app.schemas.quote import QuoteResponse
-from app.services.ai_quote_service import (
-    create_quote_from_text,
+from app.services.graph_quote_service import (
+    create_quote_with_graph,
 )
 
 
@@ -13,7 +13,6 @@ router = APIRouter(
     prefix="/ai",
     tags=["AI"]
 )
-
 
 @router.post(
     "/quote",
@@ -24,7 +23,7 @@ def generate_quote_from_text(
     db: Session = Depends(get_db),
 ):
     try:
-        return create_quote_from_text(
+        return create_quote_with_graph(
             message=request.message,
             db=db,
         )
