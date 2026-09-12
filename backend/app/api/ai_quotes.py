@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import require_roles
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.ai import NaturalLanguageQuoteRequest
 from app.schemas.quote import QuoteResponse
 from app.services.graph_quote_service import (
@@ -11,8 +13,9 @@ from app.services.graph_quote_service import (
 
 router = APIRouter(
     prefix="/ai",
-    tags=["AI"]
+    tags=["AI"],
 )
+
 
 @router.post(
     "/quote",
@@ -21,11 +24,21 @@ router = APIRouter(
 def generate_quote_from_text(
     request: NaturalLanguageQuoteRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_roles(
+            "sales_rep",
+            "manager",
+            "admin",
+        )
+    ),
 ):
     try:
         return create_quote_with_graph(
             message=request.message,
             db=db,
+            user_id=current_user.id,
+            username=current_user.username,
+            user_role=current_user.role,
         )
 
     except ValueError as exc:

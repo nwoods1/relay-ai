@@ -31,3 +31,7 @@ class QuoteWorkflowState(TypedDict, total=False):
     product_data: dict | None
     inventory_data: dict | None
     pricing_data: dict | None
+
+    user_id: int | None
+    username: str | None
+    user_role: str | None

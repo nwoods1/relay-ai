@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         env_file=BASE_DIR / ".env",
         extra="ignore",
     )
+    jwt_secret_key: str
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60
 
 
 settings = Settings()

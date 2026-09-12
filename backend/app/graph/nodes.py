@@ -29,6 +29,12 @@ def parse_request_node(
 ) -> dict:
 
     logger.info(
+        "Workflow started by user=%s role=%s",
+        state.get("username"),
+        state.get("user_role"),
+    )
+
+    logger.info(
         "LangGraph node: parse_request"
     )
 
