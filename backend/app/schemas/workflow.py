@@ -5,6 +5,11 @@ from pydantic import BaseModel
 
 from app.schemas.quote import QuoteResponse
 
+class WorkflowErrorResponse(BaseModel):
+    type: str
+    message: str
+    failed_node: str | None = None
+    retry_count: int | None = None
 
 class PendingApprovalResponse(BaseModel):
     thread_id: str
@@ -18,6 +23,7 @@ class QuoteWorkflowResponse(BaseModel):
     status: str
     quote: QuoteResponse | None = None
     approval_request: dict[str, Any] | None = None
+    error: WorkflowErrorResponse | None = None
 
 
 class ApprovalDecisionRequest(BaseModel):
@@ -42,3 +48,4 @@ class ApprovalStatusResponse(BaseModel):
     decision_comment: str | None
     created_at: datetime
     decided_at: datetime | None
+

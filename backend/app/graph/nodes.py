@@ -24,6 +24,13 @@ from app.tools.pricing_tools import (
 )
 from langgraph.types import interrupt
 from app.core.database import SessionLocal
+from app.core.exceptions import (
+    ExternalServiceError,
+    ModelResponseError,
+)
+from app.graph.error_handling import (
+    build_failure_state,
+)
 
 
 def parse_request_node(
@@ -40,18 +47,33 @@ def parse_request_node(
         "LangGraph node: parse_request"
     )
 
-    parsed_request = parse_quote_request(
-        message=state["message"]
-    )
+    try:
+        parsed_request = parse_quote_request(
+            state["message"]
+        )
 
-    validate_parsed_quote_request(
-        parsed_request
-    )
+        validate_parsed_quote_request(
+            parsed_request
+        )
 
-    return {
-        "parsed_request": parsed_request,
-        "current_node": "parse_request",
-    }
+        return {
+            "parsed_request": parsed_request,
+            "current_node": "parse_request",
+        }
+
+    except ExternalServiceError as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="parse_request",
+            retry_count=2,
+        )
+
+    except ModelResponseError as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="parse_request",
+            retry_count=0,
+        )
 
 def resolve_customer_node(
     state: QuoteWorkflowState,
@@ -61,19 +83,19 @@ def resolve_customer_node(
         "LangGraph node: resolve_customer"
     )
 
-    parsed_request = state["parsed_request"]
-
     db = SessionLocal()
 
     try:
-        customer_tool = create_customer_lookup_tool(
-            db
+        customer_tool = (
+            create_customer_lookup_tool(db)
         )
 
         customer_data = customer_tool.invoke(
             {
                 "customer_name":
-                    parsed_request.customer_name
+                    state[
+                        "parsed_request"
+                    ].customer_name
             }
         )
 
@@ -81,6 +103,12 @@ def resolve_customer_node(
             "customer_data": customer_data,
             "current_node": "resolve_customer",
         }
+
+    except Exception as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="resolve_customer",
+        )
 
     finally:
         db.close()
@@ -93,19 +121,19 @@ def resolve_product_node(
         "LangGraph node: resolve_product"
     )
 
-    parsed_request = state["parsed_request"]
-
     db = SessionLocal()
 
     try:
-        product_tool = create_product_lookup_tool(
-            db
+        product_tool = (
+            create_product_lookup_tool(db)
         )
 
         product_data = product_tool.invoke(
             {
                 "product_name":
-                    parsed_request.product_name
+                    state[
+                        "parsed_request"
+                    ].product_name
             }
         )
 
@@ -113,6 +141,12 @@ def resolve_product_node(
             "product_data": product_data,
             "current_node": "resolve_product",
         }
+
+    except Exception as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="resolve_product",
+        )
 
     finally:
         db.close()
@@ -125,10 +159,6 @@ def build_quote_node(
         "LangGraph node: build_quote"
     )
 
-    parsed_request = state["parsed_request"]
-    customer_data = state["customer_data"]
-    product_data = state["product_data"]
-
     db = SessionLocal()
 
     try:
@@ -139,11 +169,17 @@ def build_quote_node(
         quote_data = quote_tool.invoke(
             {
                 "customer_code":
-                    customer_data["customer_code"],
+                    state[
+                        "customer_data"
+                    ]["customer_code"],
                 "sku":
-                    product_data["sku"],
+                    state[
+                        "product_data"
+                    ]["sku"],
                 "quantity":
-                    parsed_request.quantity,
+                    state[
+                        "parsed_request"
+                    ].quantity,
             }
         )
 
@@ -155,6 +191,12 @@ def build_quote_node(
             "quote": quote,
             "current_node": "build_quote",
         }
+
+    except Exception as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="build_quote",
+        )
 
     finally:
         db.close()
@@ -236,7 +278,9 @@ def check_inventory_node(
         inventory_data = inventory_tool.invoke(
             {
                 "sku":
-                    state["product_data"]["sku"]
+                    state[
+                        "product_data"
+                    ]["sku"]
             }
         )
 
@@ -244,6 +288,12 @@ def check_inventory_node(
             "inventory_data": inventory_data,
             "current_node": "check_inventory",
         }
+
+    except Exception as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="check_inventory",
+        )
 
     finally:
         db.close()
@@ -266,11 +316,13 @@ def get_pricing_node(
         pricing_data = pricing_tool.invoke(
             {
                 "customer_code":
-                    state["customer_data"][
-                        "customer_code"
-                    ],
+                    state[
+                        "customer_data"
+                    ]["customer_code"],
                 "sku":
-                    state["product_data"]["sku"],
+                    state[
+                        "product_data"
+                    ]["sku"],
             }
         )
 
@@ -278,6 +330,12 @@ def get_pricing_node(
             "pricing_data": pricing_data,
             "current_node": "get_pricing",
         }
+
+    except Exception as exc:
+        return build_failure_state(
+            exc=exc,
+            node_name="get_pricing",
+        )
 
     finally:
         db.close()
@@ -307,4 +365,20 @@ def approval_rejected_node(
     return {
         "workflow_status": "rejected",
         "current_node": "approval_rejected",
+    }
+
+def workflow_failed_node(
+    state: QuoteWorkflowState,
+) -> dict:
+
+    logger.error(
+        "LangGraph workflow failed node=%s type=%s message=%s",
+        state.get("failed_node"),
+        state.get("error_type"),
+        state.get("error_message"),
+    )
+
+    return {
+        "workflow_status": "failed",
+        "current_node": "workflow_failed",
     }

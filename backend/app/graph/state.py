@@ -34,4 +34,9 @@ class QuoteWorkflowState(TypedDict, total=False):
     approved_by_username: str | None
     approval_comment: str | None
 
+    error_type: str | None
+    error_message: str | None
+    failed_node: str | None
+    retry_count: int | None
+
     error: str | None

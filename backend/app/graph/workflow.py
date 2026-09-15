@@ -16,6 +16,7 @@ from app.graph.nodes import (
     approval_required_node,
     approval_accepted_node,
     approval_rejected_node,
+    workflow_failed_node,
 )
 
 
@@ -36,6 +37,18 @@ def route_after_human_decision(
         return "approval_accepted"
 
     return "approval_rejected"
+
+def route_after_node(
+    state: QuoteWorkflowState,
+) -> str:
+
+    if (
+        state.get("workflow_status")
+        == "failed"
+    ):
+        return "failed"
+
+    return "continue"
 
 
 workflow = StateGraph(
@@ -97,39 +110,68 @@ workflow.add_node(
     approval_rejected_node,
 )
 
+workflow.add_node(
+    "workflow_failed",
+    workflow_failed_node,
+)
+
 workflow.add_edge(
     START,
     "parse_request",
 )
 
-workflow.add_edge(
+workflow.add_conditional_edges(
     "parse_request",
+    route_after_node,
+    {
+        "continue": "resolve_customer",
+        "failed": "workflow_failed",
+    },
+)
+
+workflow.add_conditional_edges(
     "resolve_customer",
+    route_after_node,
+    {
+        "continue": "resolve_product",
+        "failed": "workflow_failed",
+    },
 )
 
-workflow.add_edge(
-    "resolve_customer",
+workflow.add_conditional_edges(
     "resolve_product",
+    route_after_node,
+    {
+        "continue": "check_inventory",
+        "failed": "workflow_failed",
+    },
 )
 
-workflow.add_edge(
-    "resolve_product",
+workflow.add_conditional_edges(
     "check_inventory",
+    route_after_node,
+    {
+        "continue": "get_pricing",
+        "failed": "workflow_failed",
+    },
 )
 
-workflow.add_edge(
-    "check_inventory",
+workflow.add_conditional_edges(
     "get_pricing",
+    route_after_node,
+    {
+        "continue": "build_quote",
+        "failed": "workflow_failed",
+    },
 )
 
-workflow.add_edge(
-    "get_pricing",
+workflow.add_conditional_edges(
     "build_quote",
-)
-
-workflow.add_edge(
-    "build_quote",
-    "evaluate_approval",
+    route_after_node,
+    {
+        "continue": "evaluate_approval",
+        "failed": "workflow_failed",
+    },
 )
 
 workflow.add_conditional_edges(
@@ -139,11 +181,6 @@ workflow.add_conditional_edges(
         "approved_path": "approved_path",
         "approval_required": "approval_required",
     },
-)
-
-workflow.add_edge(
-    "approved_path",
-    END,
 )
 
 workflow.add_conditional_edges(
@@ -156,6 +193,11 @@ workflow.add_conditional_edges(
 )
 
 workflow.add_edge(
+    "approved_path",
+    END,
+)
+
+workflow.add_edge(
     "approval_accepted",
     END,
 )
@@ -165,6 +207,10 @@ workflow.add_edge(
     END,
 )
 
+workflow.add_edge(
+    "workflow_failed",
+    END,
+)
 
 postgres_connection = Connection.connect(
     settings.langgraph_database_url,

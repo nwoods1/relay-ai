@@ -7,8 +7,10 @@ from app.schemas.quote import QuoteResponse
 from app.schemas.workflow import (
     QuoteWorkflowResponse,
     ApprovalDecisionResponse,
+    WorkflowErrorResponse,
 )
 from app.models.approval import Approval
+
 
 def create_quote_with_graph(
     message: str,
@@ -37,6 +39,32 @@ def create_quote_with_graph(
         },
         config=config,
     )
+
+    if (
+        result.get("workflow_status")
+        == "failed"
+    ):
+        return QuoteWorkflowResponse(
+            thread_id=thread_id,
+            status="failed",
+            quote=result.get("quote"),
+            error=WorkflowErrorResponse(
+                type=result.get(
+                    "error_type",
+                    "WorkflowError",
+                ),
+                message=result.get(
+                    "error_message",
+                    "Workflow failed",
+                ),
+                failed_node=result.get(
+                    "failed_node"
+                ),
+                retry_count=result.get(
+                    "retry_count"
+                ),
+            ),
+        )
 
     quote = result.get("quote")
 
