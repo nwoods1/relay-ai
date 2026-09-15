@@ -9,26 +9,28 @@ from app.schemas.quote import QuoteResponse
 from app.services.graph_quote_service import (
     create_quote_with_graph,
 )
-
+from app.api.dependencies import (
+    require_permission,
+)
+from app.schemas.workflow import (
+    QuoteWorkflowResponse,
+)
 
 router = APIRouter(
     prefix="/ai",
     tags=["AI"],
 )
 
-
 @router.post(
     "/quote",
-    response_model=QuoteResponse,
+    response_model=QuoteWorkflowResponse,
 )
 def generate_quote_from_text(
     request: NaturalLanguageQuoteRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(
-            "sales_rep",
-            "manager",
-            "admin",
+        require_permission(
+            "quote:create"
         )
     ),
 ):

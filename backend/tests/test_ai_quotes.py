@@ -33,7 +33,7 @@ def test_ai_quote(
         ParsedQuoteRequest(
             customer_name="Pacific Mountain Outfitters",
             product_name="Alpine Shell Jacket",
-            quantity=30,
+            quantity=20,
         )
     )
 
@@ -44,7 +44,7 @@ def test_ai_quote(
         json={
             "message": (
                 "Can Pacific Mountain Outfitters "
-                "get 30 Alpine Shell Jackets?"
+                "get 20 Alpine Shell Jackets?"
             )
         },
         headers={
@@ -56,10 +56,34 @@ def test_ai_quote(
 
     data = response.json()
 
-    assert data["customer_code"] == "BP-20001"
-    assert data["sku"] == "JACKET-BETA-AR-M"
-    assert data["quantity_requested"] == 30
-    assert data["fulfillment_status"] == "available"
+    assert data["status"] == "ready"
+    assert data["thread_id"]
+    assert data["approval_request"] is None
+
+    assert (
+        data["quote"]["customer_code"]
+        == "BP-20001"
+    )
+
+    assert (
+        data["quote"]["sku"]
+        == "JACKET-BETA-AR-M"
+    )
+
+    assert (
+        data["quote"]["quantity_requested"]
+        == 20
+    )
+
+    assert (
+        data["quote"]["fulfillment_status"]
+        == "available"
+    )
+
+    assert (
+        data["quote"]["requires_approval"]
+        is False
+    )
 
 
 @patch(
@@ -127,12 +151,31 @@ def test_ai_quote_large_order(
 
     data = response.json()
 
-    assert data["fulfillment_status"] == "partial"
-    assert data["requires_approval"] is True
+    assert (
+        data["status"]
+        == "awaiting_approval"
+    )
+
+    assert data["thread_id"]
+
+    assert (
+        data["approval_request"]
+        is not None
+    )
+
+    assert (
+        data["quote"]["fulfillment_status"]
+        == "partial"
+    )
+
+    assert (
+        data["quote"]["requires_approval"]
+        is True
+    )
 
     assert (
         "Requested quantity cannot be fully fulfilled"
-        in data["approval_reasons"]
+        in data["quote"]["approval_reasons"]
     )
 
 
@@ -147,4 +190,7 @@ def test_ai_quote_requires_authentication():
         },
     )
 
-    assert response.status_code in (401, 403)
+    assert response.status_code in (
+        401,
+        403,
+    )

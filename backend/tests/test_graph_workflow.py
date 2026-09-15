@@ -1,6 +1,6 @@
 from unittest.mock import patch
+from uuid import uuid4
 
-from app.core.database import SessionLocal
 from app.graph.workflow import quote_workflow
 from app.schemas.ai import ParsedQuoteRequest
 
@@ -19,40 +19,76 @@ def test_graph_runs_quote_workflow(
         )
     )
 
-    db = SessionLocal()
+    thread_id = str(uuid4())
 
-    try:
-        result = quote_workflow.invoke(
-            {
-                "message": "Give me a quote",
-                "db": db,
+    result = quote_workflow.invoke(
+        {
+            "message": "Give me a quote",
+            "user_id": 1,
+            "username": "sales",
+            "user_role": "sales_rep",
+        },
+        config={
+            "configurable": {
+                "thread_id": thread_id
             }
-        )
+        },
+    )
 
-        assert result["quote"] is not None
+    assert (
+        result["parsed_request"].customer_name
+        == "Pacific Mountain Outfitters"
+    )
 
-        assert (
-            result["quote"].customer_code
-            == "BP-20001"
-        )
+    assert (
+        result["parsed_request"].product_name
+        == "Alpine Shell Jacket"
+    )
 
-        assert (
-            result["quote"].sku
-            == "JACKET-BETA-AR-M"
-        )
+    assert (
+        result["parsed_request"].quantity
+        == 1
+    )
 
-        assert (
-            result["inventory_data"]["total_available"]
-            == 89
-        )
+    assert (
+        result["customer_data"]["customer_code"]
+        == "BP-20001"
+    )
 
-        assert (
-            result["pricing_data"]["pricing_tier"]
-            == "B"
-        )
+    assert (
+        result["product_data"]["sku"]
+        == "JACKET-BETA-AR-M"
+    )
 
-    finally:
-        db.close()
+    assert (
+        result["inventory_data"]["total_available"]
+        == 89
+    )
+
+    assert (
+        result["pricing_data"]["pricing_tier"]
+        == "B"
+    )
+
+    assert (
+        result["quote"].quantity_requested
+        == 1
+    )
+
+    assert (
+        result["quote"].fulfillment_status
+        == "available"
+    )
+
+    assert (
+        result["requires_approval"]
+        is False
+    )
+
+    assert (
+        result["workflow_status"]
+        == "ready"
+    )
 
 
 @patch(
@@ -69,32 +105,52 @@ def test_graph_routes_to_approval(
         )
     )
 
-    db = SessionLocal()
+    thread_id = str(uuid4())
 
-    try:
-        result = quote_workflow.invoke(
-            {
-                "message": "Large order",
-                "db": db,
+    result = quote_workflow.invoke(
+        {
+            "message": "Give me a quote",
+            "user_id": 1,
+            "username": "sales",
+            "user_role": "sales_rep",
+        },
+        config={
+            "configurable": {
+                "thread_id": thread_id
             }
-        )
+        },
+    )
 
-        assert result["requires_approval"] is True
+    assert (
+        result["inventory_data"]["total_available"]
+        == 89
+    )
 
-        assert (
-            result["workflow_status"]
-            == "awaiting_approval"
-        )
+    assert (
+        result["pricing_data"]["pricing_tier"]
+        == "B"
+    )
 
-        assert (
-            result["inventory_data"]["total_available"]
-            == 89
-        )
+    assert (
+        result["quote"].quantity_requested
+        == 500
+    )
 
-        assert (
-            result["pricing_data"]["pricing_tier"]
-            == "B"
-        )
+    assert (
+        result["quote"].fulfillment_status
+        == "partial"
+    )
 
-    finally:
-        db.close()
+    assert (
+        result["requires_approval"]
+        is True
+    )
+
+    assert (
+        "Requested quantity cannot be fully fulfilled"
+        in result["approval_reasons"]
+    )
+
+    assert "__interrupt__" in result
+
+    assert result["__interrupt__"]

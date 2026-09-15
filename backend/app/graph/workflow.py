@@ -1,5 +1,8 @@
 from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.postgres import PostgresSaver
+from psycopg import Connection
 
+from app.core.config import settings
 from app.graph.state import QuoteWorkflowState
 from app.graph.nodes import (
     parse_request_node,
@@ -11,6 +14,8 @@ from app.graph.nodes import (
     evaluate_approval_node,
     approved_path_node,
     approval_required_node,
+    approval_accepted_node,
+    approval_rejected_node,
 )
 
 
@@ -22,6 +27,15 @@ def route_after_approval(
         return "approval_required"
 
     return "approved_path"
+
+def route_after_human_decision(
+    state: QuoteWorkflowState,
+) -> str:
+
+    if state["approval_decision"] == "approved":
+        return "approval_accepted"
+
+    return "approval_rejected"
 
 
 workflow = StateGraph(
@@ -73,6 +87,15 @@ workflow.add_node(
     approval_required_node,
 )
 
+workflow.add_node(
+    "approval_accepted",
+    approval_accepted_node,
+)
+
+workflow.add_node(
+    "approval_rejected",
+    approval_rejected_node,
+)
 
 workflow.add_edge(
     START,
@@ -123,10 +146,39 @@ workflow.add_edge(
     END,
 )
 
-workflow.add_edge(
+workflow.add_conditional_edges(
     "approval_required",
+    route_after_human_decision,
+    {
+        "approval_accepted": "approval_accepted",
+        "approval_rejected": "approval_rejected",
+    },
+)
+
+workflow.add_edge(
+    "approval_accepted",
+    END,
+)
+
+workflow.add_edge(
+    "approval_rejected",
     END,
 )
 
 
-quote_workflow = workflow.compile()
+postgres_connection = Connection.connect(
+    settings.langgraph_database_url,
+    autocommit=True,
+    prepare_threshold=0,
+)
+
+checkpointer = PostgresSaver(
+    postgres_connection
+)
+
+checkpointer.setup()
+
+quote_workflow = workflow.compile(
+    checkpointer=checkpointer
+)
+

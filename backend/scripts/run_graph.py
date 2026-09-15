@@ -12,8 +12,15 @@ def run_graph():
                     "Pacific Mountain Outfitters wants "
                     "1 Merino Wool Toque."
                 ),
-                "db": db,
-            }
+                "user_id": 1,
+                "username": "sales",
+                "user_role": "sales_rep",
+            },
+            config={
+                "configurable": {
+                    "thread_id": "manual-test-1"
+                }
+            },
         )
 
         print(

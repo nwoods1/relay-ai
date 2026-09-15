@@ -10,6 +10,9 @@ from app.api.pricing import router as pricing_router
 from app.api.quotes import router as quotes_router
 from app.api.ai_quotes import router as ai_quotes_router
 from app.api.auth import router as auth_router
+from app.api.approvals import (
+    router as approvals_router,
+)
 
 app = FastAPI(
     title="Relay AI API",
@@ -58,6 +61,11 @@ app.include_router(
 
 app.include_router(
     auth_router,
+    prefix="/api",
+)
+
+app.include_router(
+    approvals_router,
     prefix="/api",
 )
 
