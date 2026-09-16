@@ -1,6 +1,7 @@
 from fastapi import (
     APIRouter,
     Depends,
+    Header,
     HTTPException,
 )
 from sqlalchemy.orm import Session
@@ -37,6 +38,12 @@ def decide_quote_approval(
     current_user: User = Depends(
         require_permission("quote:approve")
     ),
+    idempotency_key: str = Header(
+        ...,
+        alias="Idempotency-Key",
+        min_length=8,
+        max_length=255,
+    ),
 ):
     return resume_quote_workflow(
         thread_id=thread_id,
@@ -45,12 +52,15 @@ def decide_quote_approval(
         user_id=current_user.id,
         username=current_user.username,
         db=db,
+        idempotency_key=idempotency_key,
     )
 
 
 @router.get(
     "/",
-    response_model=list[PendingApprovalResponse],
+    response_model=list[
+        PendingApprovalResponse
+    ],
 )
 def get_pending_approvals(
     db: Session = Depends(get_db),
@@ -60,8 +70,12 @@ def get_pending_approvals(
 ):
     return (
         db.query(Approval)
-        .filter(Approval.status == "pending")
-        .order_by(Approval.created_at.desc())
+        .filter(
+            Approval.status == "pending"
+        )
+        .order_by(
+            Approval.created_at.desc()
+        )
         .all()
     )
 
@@ -79,7 +93,10 @@ def get_approval_status(
 ):
     approval = (
         db.query(Approval)
-        .filter(Approval.thread_id == thread_id)
+        .filter(
+            Approval.thread_id
+            == thread_id
+        )
         .first()
     )
 

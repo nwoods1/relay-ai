@@ -6,7 +6,18 @@ from sqlalchemy.orm import Session
 
 from app.graph.workflow import quote_workflow
 from app.models.approval import Approval
-from app.schemas.workflow import ApprovalDecisionResponse
+from app.schemas.workflow import (
+    ApprovalDecisionResponse,
+)
+from app.services.idempotency_service import (
+    build_request_hash,
+    build_scoped_key,
+    complete_idempotency_record,
+    create_idempotency_record,
+    fail_idempotency_record,
+    get_idempotency_record,
+    handle_existing_record,
+)
 
 
 def resume_quote_workflow(
@@ -16,13 +27,51 @@ def resume_quote_workflow(
     user_id: int,
     username: str,
     db: Session,
+    idempotency_key: str,
 ) -> ApprovalDecisionResponse:
 
-    # Find the business approval record
+    operation = "approve_quote"
+
+    scoped_key = build_scoped_key(
+        user_id=user_id,
+        operation=operation,
+        idempotency_key=idempotency_key,
+    )
+
+    request_hash = build_request_hash(
+        {
+            "thread_id": thread_id,
+            "decision": decision,
+            "comment": comment,
+            "user_id": user_id,
+        }
+    )
+
+    existing_record = get_idempotency_record(
+        db=db,
+        key=scoped_key,
+        operation=operation,
+    )
+
+    if existing_record:
+        cached_response = handle_existing_record(
+            existing_record,
+            request_hash,
+        )
+
+        if cached_response:
+            return (
+                ApprovalDecisionResponse
+                .model_validate(
+                    cached_response
+                )
+            )
+
     approval = (
         db.query(Approval)
         .filter(
-            Approval.thread_id == thread_id
+            Approval.thread_id
+            == thread_id
         )
         .first()
     )
@@ -33,7 +82,6 @@ def resume_quote_workflow(
             detail="Approval request not found",
         )
 
-    # Prevent the same approval from being decided twice
     if approval.status != "pending":
         raise HTTPException(
             status_code=409,
@@ -42,6 +90,13 @@ def resume_quote_workflow(
                 "been decided"
             ),
         )
+
+    record = create_idempotency_record(
+        db=db,
+        key=scoped_key,
+        operation=operation,
+        request_hash=request_hash,
+    )
 
     config = {
         "configurable": {
@@ -56,15 +111,22 @@ def resume_quote_workflow(
         "username": username,
     }
 
-    # Resume the suspended LangGraph workflow
-    result = quote_workflow.invoke(
-        Command(
-            resume=resume_payload
-        ),
-        config=config,
-    )
+    try:
+        result = quote_workflow.invoke(
+            Command(
+                resume=resume_payload
+            ),
+            config=config,
+        )
 
-    # Update the business approval audit record
+    except Exception:
+        fail_idempotency_record(
+            db=db,
+            record=record,
+        )
+
+        raise
+
     approval.status = decision
     approval.decided_by_user_id = user_id
     approval.decision_comment = comment
@@ -72,8 +134,18 @@ def resume_quote_workflow(
 
     db.commit()
 
-    return ApprovalDecisionResponse(
+    response = ApprovalDecisionResponse(
         thread_id=thread_id,
         status=result["workflow_status"],
         quote=result.get("quote"),
     )
+
+    complete_idempotency_record(
+        db=db,
+        record=record,
+        response_data=response.model_dump(
+            mode="json"
+        ),
+    )
+
+    return response

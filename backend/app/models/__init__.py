@@ -5,3 +5,4 @@ from app.models.inventory import Inventory
 from app.models.pricing import Pricing
 from app.models.user import User
 from app.models.approval import Approval
+from app.models.idempotency import IdempotencyRecord

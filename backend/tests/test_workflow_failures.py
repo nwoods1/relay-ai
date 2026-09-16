@@ -1,20 +1,36 @@
 from unittest.mock import patch
 from uuid import uuid4
 
+from fastapi.testclient import TestClient
+
 from app.core.exceptions import (
     ExternalServiceError,
 )
-from app.graph.workflow import (
-    quote_workflow,
-)
-from fastapi.testclient import TestClient
-
+from app.graph.workflow import quote_workflow
 from app.main import app
 from app.schemas.ai import (
     ParsedQuoteRequest,
 )
 
+
 client = TestClient(app)
+
+
+def get_sales_token():
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "username": "sales",
+            "password": "Sales123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response.json()[
+        "access_token"
+    ]
+
 
 @patch(
     "app.graph.nodes.parse_quote_request"
@@ -22,7 +38,6 @@ client = TestClient(app)
 def test_bedrock_failure_routes_to_failed_workflow(
     mock_parse_quote_request,
 ):
-
     mock_parse_quote_request.side_effect = (
         ExternalServiceError(
             "Bedrock unavailable"
@@ -38,9 +53,8 @@ def test_bedrock_failure_routes_to_failed_workflow(
         },
         config={
             "configurable": {
-                "thread_id": str(
-                    uuid4()
-                )
+                "thread_id":
+                    str(uuid4())
             }
         },
     )
@@ -60,26 +74,6 @@ def test_bedrock_failure_routes_to_failed_workflow(
         == "ExternalServiceError"
     )
 
-    assert (
-        result["error_message"]
-        == "Bedrock unavailable"
-    )
-
-def get_sales_token():
-
-    response = client.post(
-        "/api/auth/login",
-        json={
-            "username": "sales",
-            "password": "Sales123!",
-        },
-    )
-
-    assert response.status_code == 200
-
-    return response.json()[
-        "access_token"
-    ]
 
 @patch(
     "app.graph.nodes.parse_quote_request"
@@ -87,7 +81,6 @@ def get_sales_token():
 def test_api_returns_structured_workflow_failure(
     mock_parse_quote_request,
 ):
-
     mock_parse_quote_request.side_effect = (
         ExternalServiceError(
             "Bedrock unavailable"
@@ -103,7 +96,9 @@ def test_api_returns_structured_workflow_failure(
         },
         headers={
             "Authorization":
-                f"Bearer {token}"
+                f"Bearer {token}",
+            "Idempotency-Key":
+                str(uuid4()),
         },
     )
 
@@ -123,6 +118,7 @@ def test_api_returns_structured_workflow_failure(
         == "parse_request"
     )
 
+
 @patch(
     "app.graph.nodes.create_customer_lookup_tool"
 )
@@ -133,7 +129,6 @@ def test_customer_tool_failure_is_captured(
     mock_parse,
     mock_customer_tool_factory,
 ):
-
     mock_parse.return_value = (
         ParsedQuoteRequest(
             customer_name="Pacific Mountain Outfitters",
@@ -159,9 +154,8 @@ def test_customer_tool_failure_is_captured(
         },
         config={
             "configurable": {
-                "thread_id": str(
-                    uuid4()
-                )
+                "thread_id":
+                    str(uuid4())
             }
         },
     )

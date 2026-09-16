@@ -1,15 +1,23 @@
-from langgraph.types import Command
-from sqlalchemy.orm import Session
 from uuid import uuid4
 
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
 from app.graph.workflow import quote_workflow
-from app.schemas.quote import QuoteResponse
+from app.models.approval import Approval
 from app.schemas.workflow import (
     QuoteWorkflowResponse,
-    ApprovalDecisionResponse,
     WorkflowErrorResponse,
 )
-from app.models.approval import Approval
+from app.services.idempotency_service import (
+    build_request_hash,
+    build_scoped_key,
+    complete_idempotency_record,
+    create_idempotency_record,
+    fail_idempotency_record,
+    get_idempotency_record,
+    handle_existing_record,
+)
 
 
 def create_quote_with_graph(
@@ -18,7 +26,50 @@ def create_quote_with_graph(
     user_id: int,
     username: str,
     user_role: str,
+    idempotency_key: str,
 ) -> QuoteWorkflowResponse:
+
+    operation = "create_quote"
+
+    scoped_key = build_scoped_key(
+        user_id=user_id,
+        operation=operation,
+        idempotency_key=idempotency_key,
+    )
+
+    request_hash = build_request_hash(
+        {
+            "message": message,
+            "user_id": user_id,
+        }
+    )
+
+    existing_record = get_idempotency_record(
+        db=db,
+        key=scoped_key,
+        operation=operation,
+    )
+
+    if existing_record:
+        cached_response = handle_existing_record(
+            existing_record,
+            request_hash,
+        )
+
+        if cached_response:
+            return (
+                QuoteWorkflowResponse
+                .model_validate(
+                    cached_response
+                )
+            )
+
+    record = create_idempotency_record(
+        db=db,
+        key=scoped_key,
+        operation=operation,
+        request_hash=request_hash,
+    )
 
     thread_id = str(
         uuid4()
@@ -30,24 +81,37 @@ def create_quote_with_graph(
         }
     }
 
-    result = quote_workflow.invoke(
-        {
-            "message": message,
-            "user_id": user_id,
-            "username": username,
-            "user_role": user_role,
-        },
-        config=config,
+    try:
+        result = quote_workflow.invoke(
+            {
+                "message": message,
+                "user_id": user_id,
+                "username": username,
+                "user_role": user_role,
+            },
+            config=config,
+        )
+
+    except Exception:
+        fail_idempotency_record(
+            db=db,
+            record=record,
+        )
+
+        raise
+
+    quote = result.get(
+        "quote"
     )
 
     if (
         result.get("workflow_status")
         == "failed"
     ):
-        return QuoteWorkflowResponse(
+        response = QuoteWorkflowResponse(
             thread_id=thread_id,
             status="failed",
-            quote=result.get("quote"),
+            quote=quote,
             error=WorkflowErrorResponse(
                 type=result.get(
                     "error_type",
@@ -66,7 +130,15 @@ def create_quote_with_graph(
             ),
         )
 
-    quote = result.get("quote")
+        complete_idempotency_record(
+            db=db,
+            record=record,
+            response_data=response.model_dump(
+                mode="json"
+            ),
+        )
+
+        return response
 
     interrupts = result.get(
         "__interrupt__"
@@ -76,6 +148,7 @@ def create_quote_with_graph(
         interrupt_value = (
             interrupts[0].value
         )
+
         approval = Approval(
             thread_id=thread_id,
             status="pending",
@@ -85,14 +158,24 @@ def create_quote_with_graph(
         db.add(approval)
         db.commit()
 
-        return QuoteWorkflowResponse(
+        response = QuoteWorkflowResponse(
             thread_id=thread_id,
             status="awaiting_approval",
             quote=quote,
             approval_request=interrupt_value,
         )
 
-    return QuoteWorkflowResponse(
+        complete_idempotency_record(
+            db=db,
+            record=record,
+            response_data=response.model_dump(
+                mode="json"
+            ),
+        )
+
+        return response
+
+    response = QuoteWorkflowResponse(
         thread_id=thread_id,
         status=result.get(
             "workflow_status",
@@ -100,3 +183,13 @@ def create_quote_with_graph(
         ),
         quote=quote,
     )
+
+    complete_idempotency_record(
+        db=db,
+        record=record,
+        response_data=response.model_dump(
+            mode="json"
+        ),
+    )
+
+    return response
