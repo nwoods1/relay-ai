@@ -6,8 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.graph.workflow import quote_workflow
 from app.models.approval import Approval
+from app.models.workflow_run import WorkflowRun
 from app.schemas.workflow import (
     ApprovalDecisionResponse,
+)
+from app.services.agentops_service import (
+    complete_workflow_run,
+    record_workflow_event,
 )
 from app.services.idempotency_service import (
     build_request_hash,
@@ -70,8 +75,7 @@ def resume_quote_workflow(
     approval = (
         db.query(Approval)
         .filter(
-            Approval.thread_id
-            == thread_id
+            Approval.thread_id == thread_id
         )
         .first()
     )
@@ -90,6 +94,15 @@ def resume_quote_workflow(
                 "been decided"
             ),
         )
+
+    workflow_run = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.thread_id
+            == thread_id
+        )
+        .first()
+    )
 
     record = create_idempotency_record(
         db=db,
@@ -133,6 +146,28 @@ def resume_quote_workflow(
     approval.decided_at = datetime.utcnow()
 
     db.commit()
+
+    if workflow_run:
+        complete_workflow_run(
+            db=db,
+            workflow_run_id=workflow_run.id,
+            status=decision,
+            requires_approval=True,
+        )
+
+        record_workflow_event(
+            db=db,
+            workflow_run_id=workflow_run.id,
+            event_type="approval",
+            status=decision,
+            message=comment,
+            metadata={
+                "decided_by_user_id":
+                    user_id,
+                "decided_by_username":
+                    username,
+            },
+        )
 
     response = ApprovalDecisionResponse(
         thread_id=thread_id,

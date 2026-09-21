@@ -18,6 +18,13 @@ from app.services.idempotency_service import (
     get_idempotency_record,
     handle_existing_record,
 )
+from app.services.agentops_service import (
+    complete_workflow_run,
+    create_workflow_run,
+    fail_workflow_run,
+    pause_workflow_run,
+    record_workflow_event,
+)
 
 
 def create_quote_with_graph(
@@ -75,6 +82,23 @@ def create_quote_with_graph(
         uuid4()
     )
 
+    workflow_run = create_workflow_run(
+        db=db,
+        thread_id=thread_id,
+        operation="create_quote",
+        user_id=user_id,
+        username=username,
+        user_role=user_role,
+    )
+
+    record_workflow_event(
+        db=db,
+        workflow_run_id=workflow_run.id,
+        event_type="workflow",
+        status="started",
+        message="Quote workflow started",
+    )
+
     config = {
         "configurable": {
             "thread_id": thread_id
@@ -88,6 +112,7 @@ def create_quote_with_graph(
                 "user_id": user_id,
                 "username": username,
                 "user_role": user_role,
+                "workflow_run_id": workflow_run.id,
             },
             config=config,
         )
@@ -108,6 +133,30 @@ def create_quote_with_graph(
         result.get("workflow_status")
         == "failed"
     ):
+        fail_workflow_run(
+            db=db,
+            workflow_run_id=workflow_run.id,
+            error_type=result.get(
+                "error_type"
+            ),
+            error_message=result.get(
+                "error_message"
+            ),
+            retry_count=result.get(
+                "retry_count"
+            ),
+        )
+
+        record_workflow_event(
+            db=db,
+            workflow_run_id=workflow_run.id,
+            event_type="workflow",
+            status="failed",
+            message=result.get(
+                "error_message"
+            ),
+        )
+
         response = QuoteWorkflowResponse(
             thread_id=thread_id,
             status="failed",
@@ -149,6 +198,11 @@ def create_quote_with_graph(
             interrupts[0].value
         )
 
+        pause_workflow_run(
+            db=db,
+            workflow_run_id=workflow_run.id,
+        )
+
         approval = Approval(
             thread_id=thread_id,
             status="pending",
@@ -182,6 +236,20 @@ def create_quote_with_graph(
             "ready",
         ),
         quote=quote,
+    )
+
+    complete_workflow_run(
+        db=db,
+        workflow_run_id=workflow_run.id,
+        status=response.status,
+    )
+
+    record_workflow_event(
+        db=db,
+        workflow_run_id=workflow_run.id,
+        event_type="workflow",
+        status=response.status,
+        message="Quote workflow completed",
     )
 
     complete_idempotency_record(

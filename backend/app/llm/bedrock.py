@@ -14,13 +14,19 @@ from botocore.exceptions import (
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.core.exceptions import (
     ExternalServiceError,
     ModelResponseError,
 )
-from app.llm.prompts import QUOTE_PARSER_SYSTEM_PROMPT
+from app.llm.prompts import (
+    QUOTE_PARSER_SYSTEM_PROMPT,
+)
 from app.monitoring.logger import logger
 from app.schemas.ai import ParsedQuoteRequest
+from app.services.agentops_service import (
+    record_llm_metrics,
+)
 
 
 BEDROCK_MAX_ATTEMPTS = 3
@@ -41,13 +47,9 @@ bedrock_client = boto3.client(
 )
 
 
-def extract_json(text: str) -> dict:
-    """
-    Extract a JSON object from the model response.
-
-    Handles responses that contain markdown code fences
-    or additional text around the JSON object.
-    """
+def extract_json(
+    text: str,
+) -> dict:
 
     text = text.strip()
 
@@ -66,7 +68,9 @@ def extract_json(text: str) -> dict:
         )
 
     try:
-        return json.loads(text)
+        return json.loads(
+            text
+        )
 
     except json.JSONDecodeError:
         start = text.find("{")
@@ -78,7 +82,8 @@ def extract_json(text: str) -> dict:
             or end <= start
         ):
             raise ModelResponseError(
-                "AI response did not contain a JSON object"
+                "AI response did not contain "
+                "a JSON object"
             )
 
         json_text = text[
@@ -132,14 +137,20 @@ def _call_bedrock(
         BotoCoreError,
     ) as exc:
         raise ExternalServiceError(
-            "Temporary Bedrock connection failure"
+            "Temporary Bedrock "
+            "connection failure"
         ) from exc
 
     except ClientError as exc:
         status_code = (
             exc.response
-            .get("ResponseMetadata", {})
-            .get("HTTPStatusCode")
+            .get(
+                "ResponseMetadata",
+                {},
+            )
+            .get(
+                "HTTPStatusCode"
+            )
         )
 
         if (
@@ -147,7 +158,8 @@ def _call_bedrock(
             and status_code >= 500
         ):
             raise ExternalServiceError(
-                "Temporary Bedrock service failure"
+                "Temporary Bedrock "
+                "service failure"
             ) from exc
 
         raise ModelResponseError(
@@ -201,16 +213,19 @@ def _call_bedrock_with_retry(
             )
 
     raise ExternalServiceError(
-        "Bedrock request failed after retries"
+        "Bedrock request failed "
+        "after retries"
     ) from last_error
 
 
 def parse_quote_request(
     message: str,
+    workflow_run_id: int | None = None,
 ) -> ParsedQuoteRequest:
 
     logger.info(
-        "Sending quote parsing request to Bedrock"
+        "Sending quote parsing request "
+        "to Bedrock"
     )
 
     start_time = time.perf_counter()
@@ -225,9 +240,63 @@ def parse_quote_request(
     ) * 1000
 
     logger.info(
-        "Bedrock request completed in %.2f ms",
+        "Bedrock request completed "
+        "in %.2f ms",
         elapsed_ms,
     )
+
+    usage = response.get(
+        "usage",
+        {},
+    )
+
+    metrics = response.get(
+        "metrics",
+        {},
+    )
+
+    input_tokens = usage.get(
+        "inputTokens",
+        0,
+    )
+
+    output_tokens = usage.get(
+        "outputTokens",
+        0,
+    )
+
+    total_tokens = usage.get(
+        "totalTokens",
+        (
+            input_tokens
+            + output_tokens
+        ),
+    )
+
+    latency_ms = metrics.get(
+        "latencyMs"
+    )
+
+    if workflow_run_id:
+        db = SessionLocal()
+
+        try:
+            record_llm_metrics(
+                db=db,
+                workflow_run_id=
+                    workflow_run_id,
+                input_tokens=
+                    input_tokens,
+                output_tokens=
+                    output_tokens,
+                total_tokens=
+                    total_tokens,
+                latency_ms=
+                    latency_ms,
+            )
+
+        finally:
+            db.close()
 
     try:
         text = (
@@ -248,7 +317,8 @@ def parse_quote_request(
         TypeError,
     ) as exc:
         raise ModelResponseError(
-            "Bedrock response had an unexpected structure"
+            "Bedrock response had an "
+            "unexpected structure"
         ) from exc
 
     parsed_json = extract_json(
@@ -257,18 +327,21 @@ def parse_quote_request(
 
     try:
         parsed_request = (
-            ParsedQuoteRequest.model_validate(
+            ParsedQuoteRequest
+            .model_validate(
                 parsed_json
             )
         )
 
     except ValidationError as exc:
         logger.error(
-            "Bedrock response failed schema validation"
+            "Bedrock response failed "
+            "schema validation"
         )
 
         raise ModelResponseError(
-            "AI response did not match the expected schema"
+            "AI response did not match "
+            "the expected schema"
         ) from exc
 
     logger.info(

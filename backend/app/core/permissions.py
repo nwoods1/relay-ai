@@ -14,6 +14,7 @@ ROLE_PERMISSIONS = {
         "product:read",
         "inventory:read",
         "pricing:read",
+        "monitoring:read",
     },
 
     "admin": {

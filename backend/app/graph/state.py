@@ -40,3 +40,4 @@ class QuoteWorkflowState(TypedDict, total=False):
     retry_count: int | None
 
     error: str | None
+    workflow_run_id: int | None

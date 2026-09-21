@@ -6,3 +6,5 @@ from app.models.pricing import Pricing
 from app.models.user import User
 from app.models.approval import Approval
 from app.models.idempotency import IdempotencyRecord
+from app.models.workflow_run import WorkflowRun
+from app.models.workflow_event import WorkflowEvent

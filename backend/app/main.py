@@ -13,6 +13,9 @@ from app.api.auth import router as auth_router
 from app.api.approvals import (
     router as approvals_router,
 )
+from app.api.agentops import (
+    router as agentops_router,
+)
 
 app = FastAPI(
     title="Relay AI API",
@@ -66,6 +69,11 @@ app.include_router(
 
 app.include_router(
     approvals_router,
+    prefix="/api",
+)
+
+app.include_router(
+    agentops_router,
     prefix="/api",
 )
 
