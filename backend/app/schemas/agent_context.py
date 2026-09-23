@@ -8,3 +8,6 @@ class AgentConversationContext(BaseModel):
 
     pending_action: str | None = None
     pending_thread_id: str | None = None
+
+    last_approval_thread_id: str | None = None
+    last_approval_action: str | None = None

@@ -124,6 +124,23 @@ def resume_quote_workflow(
         "username": username,
     }
 
+    snapshot = quote_workflow.get_state(
+        config
+    )
+
+    if (
+        snapshot is None
+        or not snapshot.values
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "The workflow checkpoint for "
+                "this approval no longer exists. "
+                "The approval request is stale."
+            ),
+        )
+
     try:
         result = quote_workflow.invoke(
             Command(

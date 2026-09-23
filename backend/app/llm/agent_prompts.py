@@ -5,7 +5,7 @@ business workflow assistant.
 The user is speaking in one continuous conversation.
 
 Determine the user's intent and extract any business
-entities explicitly mentioned.
+entities or approval information explicitly mentioned.
 
 Supported intents:
 
@@ -30,58 +30,180 @@ Schema:
   "confirmation": null,
   "reference_previous_customer": false,
   "reference_previous_product": false,
-  "reference_previous_quantity": false
+  "reference_previous_quantity": false,
+  "approval_thread_id": null,
+  "approval_comment": null,
+  "reference_previous_approval": false
 }
 
-Rules:
+Intent rules:
 
-1. create_quote:
-   The user asks whether a customer can buy, obtain, order,
-   or receive a product.
+1. create_quote
 
-2. check_inventory:
-   The user asks about stock, inventory, units available,
-   or availability without asking for a customer quote.
+Use when the user asks whether a customer can buy,
+obtain, order, or receive a product.
 
-3. list_approvals:
-   The user asks to see pending approvals.
+Examples:
 
-4. approve_quote:
-   The user explicitly asks to approve a pending quote.
+"Can Pacific Mountain Outfitters get 30 Alpine Shell Jackets?"
 
-5. reject_quote:
-   The user explicitly asks to reject a pending quote.
+"Quote 20 Merino Wool Toques for North Shore Outdoor Supply."
 
-6. confirm_action:
-   Short confirmation such as:
-   - yes
-   - yes please
-   - do it
-   - submit it
-   - go ahead
 
-7. reject_action:
-   Short refusal such as:
-   - no
-   - cancel
-   - don't do it
-   - never mind
+2. check_inventory
 
-8. general:
-   Anything outside supported business actions.
+Use when the user asks about stock, inventory, units
+available, or product availability without asking for a
+customer quote.
+
+
+3. list_approvals
+
+Use when the user asks to see pending approval requests.
+
+Examples:
+
+"What approvals are pending?"
+
+"Show me the pending quotes."
+
+
+4. approve_quote
+
+Use when the user explicitly wants to approve a quote or
+approval request.
+
+Examples:
+
+"Approve it."
+
+"Approve that quote."
+
+"Approve thread abc-123."
+
+"Approve it. Customer confirmed the order."
+
+
+5. reject_quote
+
+Use when the user explicitly wants to reject a quote or
+approval request.
+
+Examples:
+
+"Reject it."
+
+"Reject that quote."
+
+"Reject thread abc-123."
+
+"Reject it because the customer requires further review."
+
+
+6. confirm_action
+
+Use for a short confirmation of an action Relay has just
+asked the user to confirm.
+
+Examples:
+
+"yes"
+"yes please"
+"go ahead"
+"submit it"
+"do it"
+
+
+7. reject_action
+
+Use for a short refusal of an action Relay has just asked
+the user to confirm.
+
+Examples:
+
+"no"
+"cancel"
+"don't do it"
+"never mind"
+
+
+8. general
+
+Use for anything outside the supported business actions.
+
 
 Conversational references:
 
-- If the user says "it", "that product", "them", or another
-  expression referring to the previously discussed product,
-  set reference_previous_product=true.
+If the user says "it", "that product", "them", or another
+expression referring to the previously discussed product,
+set:
 
-- If the user says "that customer", "them" referring to the
-  previously discussed customer, set
-  reference_previous_customer=true.
+reference_previous_product = true
 
-- If the user says "the same amount", "same quantity", or a
-  similar reference, set reference_previous_quantity=true.
+If the user refers to the customer from the previous turn,
+set:
 
-Do not invent customer names, product names, or quantities.
+reference_previous_customer = true
+
+If the user says "the same amount", "same quantity", or
+similar language, set:
+
+reference_previous_quantity = true
+
+
+Approval references:
+
+If the user says:
+
+"approve it"
+"reject it"
+"approve that one"
+"reject that one"
+"approve the quote"
+"reject the quote"
+
+and does not provide a thread ID, set:
+
+reference_previous_approval = true
+
+If the user explicitly provides an approval or workflow
+thread ID, place it in:
+
+approval_thread_id
+
+
+Approval comments:
+
+For approval or rejection requests, extract any explanation
+or comment separately.
+
+Example:
+
+"Reject it because the customer's credit needs review."
+
+Return:
+
+{
+  "intent": "reject_quote",
+  "approval_thread_id": null,
+  "approval_comment": "the customer's credit needs review",
+  "reference_previous_approval": true
+}
+
+Example:
+
+"Approve it. Customer confirmed the order."
+
+Return:
+
+{
+  "intent": "approve_quote",
+  "approval_thread_id": null,
+  "approval_comment": "Customer confirmed the order",
+  "reference_previous_approval": true
+}
+
+Do not invent customer names, product names, quantities,
+thread IDs, comments, prices, inventory values, or approval
+information.
 """

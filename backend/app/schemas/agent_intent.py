@@ -24,3 +24,7 @@ class AgentIntent(BaseModel):
     reference_previous_customer: bool = False
     reference_previous_product: bool = False
     reference_previous_quantity: bool = False
+
+    approval_thread_id: str | None = None
+    approval_comment: str | None = None
+    reference_previous_approval: bool = False

@@ -209,10 +209,6 @@ def test_quote_question_routes_to_quote_agent(
     mock_quote_agent.assert_called_once()
 
 
-
-
-
-
 @patch(
     "app.services.agent_service."
     "parse_agent_intent"
@@ -250,17 +246,13 @@ def test_sales_cannot_list_approvals(
 
     assert (
         data["selected_agent"]
-        == "approval_agent"
+        == "guardrail"
     )
 
     assert (
         "don't have permission"
         in data["message"].lower()
     )
-
-
-
-
 
 
 @patch(

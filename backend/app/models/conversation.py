@@ -85,3 +85,17 @@ class Conversation(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+    last_approval_thread_id: Mapped[
+        str | None
+    ] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    last_approval_action: Mapped[
+        str | None
+    ] = mapped_column(
+        String(50),
+        nullable=True,
+    )

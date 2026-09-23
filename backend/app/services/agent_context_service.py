@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.conversation import (
-    Conversation,
-)
+from app.models.conversation import Conversation
 from app.schemas.agent_context import (
     AgentConversationContext,
 )
@@ -31,6 +29,12 @@ def get_conversation_context(
         pending_thread_id=(
             conversation.pending_thread_id
         ),
+        last_approval_thread_id=(
+            conversation.last_approval_thread_id
+        ),
+        last_approval_action=(
+            conversation.last_approval_action
+        ),
     )
 
 
@@ -40,7 +44,8 @@ def update_conversation_context(
     customer_name: str | None = None,
     product_name: str | None = None,
     quantity: int | None = None,
-):
+) -> None:
+
     if customer_name is not None:
         conversation.last_customer_name = (
             customer_name
@@ -57,19 +62,67 @@ def update_conversation_context(
         )
 
     db.commit()
-    db.refresh(conversation)
+    db.refresh(
+        conversation
+    )
 
 
 def clear_conversation_context(
     db: Session,
     conversation: Conversation,
-):
+) -> None:
+
     conversation.last_customer_name = None
     conversation.last_product_name = None
     conversation.last_quantity = None
 
     db.commit()
-    db.refresh(conversation)
+    db.refresh(
+        conversation
+    )
+
+
+def update_approval_context(
+    db: Session,
+    conversation: Conversation,
+    thread_id: str | None = None,
+    action: str | None = None,
+) -> None:
+
+    if thread_id is not None:
+        conversation.last_approval_thread_id = (
+            thread_id
+        )
+
+    if action is not None:
+        conversation.last_approval_action = (
+            action
+        )
+
+    db.commit()
+    db.refresh(
+        conversation
+    )
+
+
+def clear_approval_context(
+    db: Session,
+    conversation: Conversation,
+    action: str | None = None,
+) -> None:
+
+    conversation.last_approval_thread_id = None
+
+    if action is not None:
+        conversation.last_approval_action = (
+            action
+        )
+
+    db.commit()
+    db.refresh(
+        conversation
+    )
+
 
 def resolve_intent_context(
     intent: AgentIntent,
@@ -106,6 +159,16 @@ def resolve_intent_context(
     ):
         data["quantity"] = (
             context.quantity
+        )
+
+    if (
+        not data["approval_thread_id"]
+        and data[
+            "reference_previous_approval"
+        ]
+    ):
+        data["approval_thread_id"] = (
+            context.last_approval_thread_id
         )
 
     return AgentIntent.model_validate(
