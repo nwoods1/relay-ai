@@ -8,3 +8,7 @@ from app.models.approval import Approval
 from app.models.idempotency import IdempotencyRecord
 from app.models.workflow_run import WorkflowRun
 from app.models.workflow_event import WorkflowEvent
+from app.models.conversation import Conversation
+from app.models.conversation_message import (
+    ConversationMessage,
+)

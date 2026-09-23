@@ -34,6 +34,7 @@ def create_quote_with_graph(
     username: str,
     user_role: str,
     idempotency_key: str,
+    create_approval_record: bool = True,
 ) -> QuoteWorkflowResponse:
 
     operation = "create_quote"
@@ -203,14 +204,15 @@ def create_quote_with_graph(
             workflow_run_id=workflow_run.id,
         )
 
-        approval = Approval(
-            thread_id=thread_id,
-            status="pending",
-            requested_by_user_id=user_id,
-        )
+        if create_approval_record:
+            approval = Approval(
+                thread_id=thread_id,
+                status="pending",
+                requested_by_user_id=user_id,
+            )
 
-        db.add(approval)
-        db.commit()
+            db.add(approval)
+            db.commit()
 
         response = QuoteWorkflowResponse(
             thread_id=thread_id,

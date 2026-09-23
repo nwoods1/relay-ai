@@ -1,30 +1,122 @@
-import { useEffect, useState } from "react"
-import { getHealth } from "./services/api"
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import Login from "./components/Login";
+import Chat from "./pages/Chat";
+
+import {
+  clearAccessToken,
+  getAccessToken,
+} from "./api/client";
+
+import {
+  getMe,
+  type UserResponse,
+} from "./api/relay";
+
 
 function App() {
-  const [status, setStatus] = useState("Checking...")
+  const [
+    user,
+    setUser,
+  ] = useState<
+    UserResponse | null
+  >(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+
+  async function loadCurrentUser():
+    Promise<UserResponse> {
+
+    const currentUser =
+      await getMe();
+
+    setUser(
+      currentUser
+    );
+
+    return currentUser;
+  }
+
 
   useEffect(() => {
-    getHealth()
-      .then((data) => {
-        setStatus(data.status)
-      })
-      .catch(() => {
-        setStatus("offline")
-      })
-  }, [])
+    async function restoreSession() {
+      const token =
+        getAccessToken();
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await loadCurrentUser();
+
+      } catch {
+        clearAccessToken();
+        setUser(null);
+
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    restoreSession();
+  }, []);
+
+
+  function handleLogout() {
+    clearAccessToken();
+
+    setUser(null);
+  }
+
+
+  if (loading) {
+    return (
+      <p>
+        Loading...
+      </p>
+    );
+  }
+
+
+  if (!user) {
+    return (
+      <Login
+        onLogin={setUser}
+        loadCurrentUser={
+          loadCurrentUser
+        }
+      />
+    );
+  }
+
 
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold">
-        Relay AI
-      </h1>
+    <div>
+      <button
+        onClick={
+          handleLogout
+        }
+      >
+        Logout
+      </button>
 
-      <p>
-        Backend: {status}
-      </p>
-    </main>
-  )
+      <hr />
+
+      <Chat
+        user={user}
+      />
+    </div>
+  );
 }
 
-export default App
+
+export default App;

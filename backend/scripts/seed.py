@@ -142,8 +142,8 @@ def seed_database():
 
         db.add_all(products)
 
-        # This writes customers/products/warehouses so IDs are generated
-        # before we create inventory and pricing rows.
+        
+        
         db.flush()
 
         warehouse_map = {

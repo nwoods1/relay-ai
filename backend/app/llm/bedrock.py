@@ -103,6 +103,7 @@ def extract_json(
 
 def _call_bedrock(
     message: str,
+    system_prompt: str,
 ) -> dict:
 
     try:
@@ -110,8 +111,7 @@ def _call_bedrock(
             modelId=settings.bedrock_model_id,
             system=[
                 {
-                    "text":
-                        QUOTE_PARSER_SYSTEM_PROMPT
+                    "text": system_prompt
                 }
             ],
             messages=[
@@ -169,6 +169,7 @@ def _call_bedrock(
 
 def _call_bedrock_with_retry(
     message: str,
+    system_prompt: str,
 ) -> dict:
 
     last_error = None
@@ -185,7 +186,8 @@ def _call_bedrock_with_retry(
             )
 
             return _call_bedrock(
-                message
+                message=message,
+                system_prompt=system_prompt
             )
 
         except ExternalServiceError as exc:
@@ -231,7 +233,10 @@ def parse_quote_request(
     start_time = time.perf_counter()
 
     response = _call_bedrock_with_retry(
-        message
+        message=message,
+        system_prompt=(
+            QUOTE_PARSER_SYSTEM_PROMPT
+        ),
     )
 
     elapsed_ms = (

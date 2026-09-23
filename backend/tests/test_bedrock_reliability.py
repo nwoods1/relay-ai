@@ -4,18 +4,16 @@ import pytest
 
 from app.core.exceptions import (
     ExternalServiceError,
+    ModelResponseError,
 )
 from app.llm.bedrock import (
     _call_bedrock_with_retry,
-)
-from app.core.exceptions import (
-    ExternalServiceError,
-    ModelResponseError,
-)
-
-from app.llm.bedrock import (
     extract_json,
 )
+from app.llm.prompts import (
+    QUOTE_PARSER_SYSTEM_PROMPT,
+)
+
 
 @patch(
     "app.llm.bedrock._call_bedrock"
@@ -45,7 +43,8 @@ def test_bedrock_retries_then_succeeds(
     ]
 
     result = _call_bedrock_with_retry(
-        "test"
+        "test",
+        QUOTE_PARSER_SYSTEM_PROMPT,
     )
 
     assert result is not None
@@ -73,14 +72,15 @@ def test_bedrock_fails_after_retries(
         ExternalServiceError
     ):
         _call_bedrock_with_retry(
-            "test"
+            "test",
+            QUOTE_PARSER_SYSTEM_PROMPT,
         )
 
     assert mock_call.call_count == 3
     assert mock_sleep.call_count == 2
 
-def test_invalid_model_json_is_not_retryable():
 
+def test_invalid_model_json_is_not_retryable():
     with pytest.raises(
         ModelResponseError
     ):

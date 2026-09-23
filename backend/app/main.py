@@ -16,6 +16,9 @@ from app.api.approvals import (
 from app.api.agentops import (
     router as agentops_router,
 )
+from app.api.agent import (
+    router as agent_router,
+)
 
 app = FastAPI(
     title="Relay AI API",
@@ -25,7 +28,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -74,6 +78,11 @@ app.include_router(
 
 app.include_router(
     agentops_router,
+    prefix="/api",
+)
+
+app.include_router(
+    agent_router,
     prefix="/api",
 )
 

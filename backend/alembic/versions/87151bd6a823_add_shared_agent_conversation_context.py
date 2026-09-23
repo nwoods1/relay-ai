@@ -1,8 +1,8 @@
-"""add approvals table
+"""add shared agent conversation context
 
-Revision ID: 120ef387e3c9
-Revises: 26732180c287
-Create Date: 2026-09-14 16:34:42.638104
+Revision ID: 87151bd6a823
+Revises: 9f3b9ba1880c
+Create Date: 2026-09-21 19:30:04.683544
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision: str = '120ef387e3c9'
-down_revision: Union[str, Sequence[str], None] = '26732180c287'
+revision: str = '87151bd6a823'
+down_revision: Union[str, Sequence[str], None] = '9f3b9ba1880c'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -21,33 +21,36 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     
-    op.create_table('approvals',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('thread_id', sa.String(length=100), nullable=False),
-    sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('requested_by_user_id', sa.Integer(), nullable=False),
-    sa.Column('decided_by_user_id', sa.Integer(), nullable=True),
-    sa.Column('decision_comment', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('decided_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['decided_by_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['requested_by_user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_approvals_thread_id'), 'approvals', ['thread_id'], unique=True)
     op.drop_index(op.f('checkpoint_blobs_thread_id_idx'), table_name='checkpoint_blobs')
     op.drop_table('checkpoint_blobs')
-    op.drop_index(op.f('checkpoints_thread_id_idx'), table_name='checkpoints')
-    op.drop_table('checkpoints')
     op.drop_table('checkpoint_migrations')
     op.drop_index(op.f('checkpoint_writes_thread_id_idx'), table_name='checkpoint_writes')
     op.drop_table('checkpoint_writes')
+    op.drop_index(op.f('checkpoints_thread_id_idx'), table_name='checkpoints')
+    op.drop_table('checkpoints')
+    op.add_column('conversations', sa.Column('last_customer_name', sa.String(length=255), nullable=True))
+    op.add_column('conversations', sa.Column('last_product_name', sa.String(length=255), nullable=True))
+    op.add_column('conversations', sa.Column('last_quantity', sa.Integer(), nullable=True))
     
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     
+    op.drop_column('conversations', 'last_quantity')
+    op.drop_column('conversations', 'last_product_name')
+    op.drop_column('conversations', 'last_customer_name')
+    op.create_table('checkpoints',
+    sa.Column('thread_id', sa.TEXT(), autoincrement=False, nullable=False),
+    sa.Column('checkpoint_ns', sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
+    sa.Column('checkpoint_id', sa.TEXT(), autoincrement=False, nullable=False),
+    sa.Column('parent_checkpoint_id', sa.TEXT(), autoincrement=False, nullable=True),
+    sa.Column('type', sa.TEXT(), autoincrement=False, nullable=True),
+    sa.Column('checkpoint', postgresql.JSONB(astext_type=sa.Text()), autoincrement=False, nullable=False),
+    sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), autoincrement=False, nullable=False),
+    sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', name=op.f('checkpoints_pkey'))
+    )
+    op.create_index(op.f('checkpoints_thread_id_idx'), 'checkpoints', ['thread_id'], unique=False)
     op.create_table('checkpoint_writes',
     sa.Column('thread_id', sa.TEXT(), autoincrement=False, nullable=False),
     sa.Column('checkpoint_ns', sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
@@ -65,17 +68,6 @@ def downgrade() -> None:
     sa.Column('v', sa.INTEGER(), autoincrement=False, nullable=False),
     sa.PrimaryKeyConstraint('v', name=op.f('checkpoint_migrations_pkey'))
     )
-    op.create_table('checkpoints',
-    sa.Column('thread_id', sa.TEXT(), autoincrement=False, nullable=False),
-    sa.Column('checkpoint_ns', sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
-    sa.Column('checkpoint_id', sa.TEXT(), autoincrement=False, nullable=False),
-    sa.Column('parent_checkpoint_id', sa.TEXT(), autoincrement=False, nullable=True),
-    sa.Column('type', sa.TEXT(), autoincrement=False, nullable=True),
-    sa.Column('checkpoint', postgresql.JSONB(astext_type=sa.Text()), autoincrement=False, nullable=False),
-    sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), autoincrement=False, nullable=False),
-    sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', name=op.f('checkpoints_pkey'))
-    )
-    op.create_index(op.f('checkpoints_thread_id_idx'), 'checkpoints', ['thread_id'], unique=False)
     op.create_table('checkpoint_blobs',
     sa.Column('thread_id', sa.TEXT(), autoincrement=False, nullable=False),
     sa.Column('checkpoint_ns', sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
@@ -86,6 +78,4 @@ def downgrade() -> None:
     sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'channel', 'version', name=op.f('checkpoint_blobs_pkey'))
     )
     op.create_index(op.f('checkpoint_blobs_thread_id_idx'), 'checkpoint_blobs', ['thread_id'], unique=False)
-    op.drop_index(op.f('ix_approvals_thread_id'), table_name='approvals')
-    op.drop_table('approvals')
     
