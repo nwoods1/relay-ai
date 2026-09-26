@@ -42,9 +42,9 @@ class Conversation(Base):
         default="active",
     )
 
-    # ----------------------------------
-    # Pending conversational action
-    # ----------------------------------
+    
+    
+    
 
     pending_action: Mapped[
         str | None
@@ -60,9 +60,9 @@ class Conversation(Base):
         nullable=True,
     )
 
-    # ----------------------------------
-    # Immediate entity context
-    # ----------------------------------
+    
+    
+    
 
     last_customer_name: Mapped[
         str | None
@@ -92,9 +92,9 @@ class Conversation(Base):
         nullable=True,
     )
 
-    # ----------------------------------
-    # Approval context
-    # ----------------------------------
+    
+    
+    
 
     last_approval_thread_id: Mapped[
         str | None
@@ -110,9 +110,9 @@ class Conversation(Base):
         nullable=True,
     )
 
-    # ----------------------------------
-    # Phase 15 richer memory
-    # ----------------------------------
+    
+    
+    
 
     recent_customers: Mapped[list] = mapped_column(
         JSON,
@@ -151,9 +151,9 @@ class Conversation(Base):
         nullable=True,
     )
 
-    # ----------------------------------
-    # Timestamps
-    # ----------------------------------
+    
+    
+    
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

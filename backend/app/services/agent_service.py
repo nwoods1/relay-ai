@@ -586,7 +586,7 @@ def resolve_approval_thread(
     str | None,
 ]:
 
-    # Explicit thread ID from user.
+    
     if intent.approval_thread_id:
         approval = get_approval_by_thread(
             db=db,
@@ -619,8 +619,8 @@ def resolve_approval_thread(
             None,
         )
 
-    # Approval remembered from this
-    # conversation.
+    
+    
     if (
         conversation.last_approval_thread_id
     ):
@@ -642,8 +642,8 @@ def resolve_approval_thread(
                 None,
             )
 
-    # If no context exists, one pending
-    # approval can be resolved safely.
+    
+    
     pending = list_pending_approvals(
         db
     )
@@ -657,8 +657,8 @@ def resolve_approval_thread(
             ),
         )
 
-    # Never guess when multiple approvals
-    # exist.
+    
+    
     if len(pending) > 1:
         return (
             None,
@@ -695,9 +695,9 @@ def handle_approval_decision(
         else "reject_quote"
     )
 
-    # Defense in depth.
-    # Authorization is also checked in the
-    # main agent pipeline.
+    
+    
+    
     if not can_perform_action(
         user_role=user.role,
         action=action,
@@ -891,9 +891,9 @@ def handle_approval_decision(
             ),
         )
 
-    # Once acted upon, do not allow
-    # "approve it" to point to the same
-    # approval again.
+    
+    
+    
     clear_approval_context(
         db=db,
         conversation=conversation,
@@ -963,11 +963,11 @@ def handle_agent_message(
         content=request.message,
     )
 
-    # ----------------------------------
-    # Phase 13:
-    # prompt-injection guardrail before
-    # the LLM router.
-    # ----------------------------------
+    
+    
+    
+    
+    
 
     injection_result = (
         check_prompt_injection(
@@ -1002,9 +1002,9 @@ def handle_agent_message(
         .lower()
     )
 
-    # ----------------------------------
-    # Pending sales-side confirmation
-    # ----------------------------------
+    
+    
+    
 
     if conversation.pending_action:
 
@@ -1045,9 +1045,9 @@ def handle_agent_message(
                 conversation=conversation,
             )
 
-    # ----------------------------------
-    # Intent routing
-    # ----------------------------------
+    
+    
+    
 
     context = (
         get_conversation_context(
@@ -1096,9 +1096,9 @@ def handle_agent_message(
         selected_agent,
     )
 
-    # ----------------------------------
-    # Central authorization
-    # ----------------------------------
+    
+    
+    
 
     if not can_perform_action(
         user_role=user.role,
@@ -1122,9 +1122,9 @@ def handle_agent_message(
             ),
         )
 
-    # ----------------------------------
-    # Conversation action
-    # ----------------------------------
+    
+    
+    
 
     if (
         selected_agent
@@ -1145,9 +1145,9 @@ def handle_agent_message(
             conversation=conversation,
         )
 
-    # ----------------------------------
-    # Inventory agent
-    # ----------------------------------
+    
+    
+    
 
     if (
         selected_agent
@@ -1256,9 +1256,9 @@ def handle_agent_message(
             ),
         )
 
-    # ----------------------------------
-    # Quote agent
-    # ----------------------------------
+    
+    
+    
 
     if (
         selected_agent
@@ -1451,17 +1451,17 @@ def handle_agent_message(
             ),
         )
 
-    # ----------------------------------
-    # Approval agent
-    # ----------------------------------
+    
+    
+    
 
     if (
         selected_agent
         == "approval_agent"
     ):
 
-        # Manager/admin wants to make
-        # a decision.
+        
+        
         if (
             intent.intent
             in {
@@ -1479,8 +1479,8 @@ def handle_agent_message(
                 ),
             )
 
-        # Manager/admin wants to list
-        # pending approvals.
+        
+        
         if (
             intent.intent
             == "list_approvals"
@@ -1497,10 +1497,10 @@ def handle_agent_message(
                 )
             )
 
-            # When exactly one approval is
-            # shown, remember it so that
-            # "approve it" / "reject it"
-            # works on the next turn.
+            
+            
+            
+            
             if len(approvals) == 1:
                 update_approval_context(
                     db=db,
@@ -1512,8 +1512,8 @@ def handle_agent_message(
                     action="listed",
                 )
 
-            # Multiple approvals are
-            # intentionally ambiguous.
+            
+            
             else:
                 clear_approval_context(
                     db=db,
@@ -1538,9 +1538,9 @@ def handle_agent_message(
                 ),
             )
 
-    # ----------------------------------
-    # General agent
-    # ----------------------------------
+    
+    
+    
 
     response_text = (
         run_general_agent()

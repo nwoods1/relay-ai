@@ -496,9 +496,9 @@ def resolve_intent_context(
 
     data = intent.model_dump()
 
-    # ----------------------------------
-    # Customer references
-    # ----------------------------------
+    
+    
+    
 
     if (
         not data["customer_name"]
@@ -528,9 +528,9 @@ def resolve_intent_context(
             context.recent_customers[1]
         )
 
-    # ----------------------------------
-    # Product references
-    # ----------------------------------
+    
+    
+    
 
     if (
         not data["product_name"]
@@ -560,9 +560,9 @@ def resolve_intent_context(
             context.recent_products[1]
         )
 
-    # ----------------------------------
-    # Quantity references
-    # ----------------------------------
+    
+    
+    
 
     if (
         data["quantity"] is None
@@ -581,9 +581,9 @@ def resolve_intent_context(
             )
         )
 
-    # ----------------------------------
-    # Warehouse references
-    # ----------------------------------
+    
+    
+    
 
     if (
         not data["warehouse_name"]
@@ -617,9 +617,9 @@ def resolve_intent_context(
             context.recent_warehouses[1]
         )
 
-    # ----------------------------------
-    # Approval references
-    # ----------------------------------
+    
+    
+    
 
     if (
         not data["approval_thread_id"]
