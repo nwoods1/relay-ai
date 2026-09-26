@@ -3,7 +3,9 @@ from datetime import datetime
 from sqlalchemy import (
     DateTime,
     Integer,
+    JSON,
     String,
+    Text,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -40,6 +42,10 @@ class Conversation(Base):
         default="active",
     )
 
+    # ----------------------------------
+    # Pending conversational action
+    # ----------------------------------
+
     pending_action: Mapped[
         str | None
     ] = mapped_column(
@@ -53,6 +59,10 @@ class Conversation(Base):
         String(100),
         nullable=True,
     )
+
+    # ----------------------------------
+    # Immediate entity context
+    # ----------------------------------
 
     last_customer_name: Mapped[
         str | None
@@ -75,16 +85,16 @@ class Conversation(Base):
         nullable=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
+    last_warehouse_name: Mapped[
+        str | None
+    ] = mapped_column(
+        String(255),
+        nullable=True,
     )
 
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-    )
+    # ----------------------------------
+    # Approval context
+    # ----------------------------------
 
     last_approval_thread_id: Mapped[
         str | None
@@ -98,4 +108,60 @@ class Conversation(Base):
     ] = mapped_column(
         String(50),
         nullable=True,
+    )
+
+    # ----------------------------------
+    # Phase 15 richer memory
+    # ----------------------------------
+
+    recent_customers: Mapped[list] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+
+    recent_products: Mapped[list] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+
+    recent_quantities: Mapped[list] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+
+    recent_warehouses: Mapped[list] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+
+    recent_actions: Mapped[list] = mapped_column(
+        JSON,
+        default=list,
+        nullable=False,
+    )
+
+    conversation_summary: Mapped[
+        str | None
+    ] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # ----------------------------------
+    # Timestamps
+    # ----------------------------------
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )

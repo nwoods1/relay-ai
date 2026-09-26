@@ -43,8 +43,10 @@ from app.schemas.agent import (
     AgentChatResponse,
 )
 from app.services.agent_context_service import (
+    build_router_input,
     clear_approval_context,
     get_conversation_context,
+    record_conversation_action,
     resolve_intent_context,
     update_approval_context,
     update_conversation_context,
@@ -473,6 +475,13 @@ def handle_confirmation(
     clear_pending_action(
         db=db,
         conversation=conversation,
+        action=(
+        "submitted_for_approval"
+        ),
+        details={
+            "thread_id":
+                thread_id
+        },
     )
 
     response_text = (
@@ -529,6 +538,13 @@ def handle_rejection(
     clear_pending_action(
         db=db,
         conversation=conversation,
+        action=(
+            "approval_submission_cancelled"
+        ),
+        details={
+            "thread_id":
+                thread_id
+        },
     )
 
     response_text = (
@@ -1033,15 +1049,24 @@ def handle_agent_message(
     # Intent routing
     # ----------------------------------
 
-    raw_intent = (
-        parse_agent_intent(
-            request.message
-        )
-    )
-
     context = (
         get_conversation_context(
             conversation
+        )
+    )
+
+    routing_input = (
+        build_router_input(
+            context=context,
+            user_message=(
+                request.message
+            ),
+        )
+    )
+
+    raw_intent = (
+        parse_agent_intent(
+            routing_input
         )
     )
 
@@ -1208,6 +1233,10 @@ def handle_agent_message(
             product_name=(
                 intent.product_name
             ),
+            warehouse_name=(
+                intent.warehouse_name
+            ),
+            action="check_inventory",
         )
 
         add_message(
@@ -1353,6 +1382,16 @@ def handle_agent_message(
             quantity=(
                 intent.quantity
             ),
+            warehouse_name=(
+                intent.warehouse_name
+            ),
+            action="create_quote",
+            action_details={
+                "thread_id":
+                    result.thread_id,
+                "status":
+                    result.status,
+            },
         )
 
         awaiting_confirmation = (
