@@ -18,6 +18,10 @@ class Settings(BaseSettings):
 
     langgraph_database_url: str
 
+    seed_sales_password: str | None = None
+    seed_manager_password: str | None = None
+    seed_admin_password: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         extra="ignore",

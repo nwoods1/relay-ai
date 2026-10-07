@@ -19,6 +19,9 @@ from app.api.agentops import (
 from app.api.agent import (
     router as agent_router,
 )
+from app.api.dashboard import (
+    router as dashboard_router,
+)
 
 app = FastAPI(
     title="Relay AI API",
@@ -83,6 +86,11 @@ app.include_router(
 
 app.include_router(
     agent_router,
+    prefix="/api",
+)
+
+app.include_router(
+    dashboard_router,
     prefix="/api",
 )
 

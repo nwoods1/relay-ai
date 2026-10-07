@@ -1,32 +1,56 @@
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models.user import User
 
 
+def require_seed_password(
+    name: str,
+    value: str | None,
+) -> str:
+    if not value:
+        raise RuntimeError(
+            f"Set {name} in .env "
+            "before seeding users"
+        )
+
+    return value
+
+
 def seed_users():
+    users = [
+        {
+            "username": "sales",
+            "email": "sales@relay.local",
+            "password": require_seed_password(
+                "SEED_SALES_PASSWORD",
+                settings.seed_sales_password,
+            ),
+            "role": "sales_rep",
+        },
+        {
+            "username": "manager",
+            "email": "manager@relay.local",
+            "password": require_seed_password(
+                "SEED_MANAGER_PASSWORD",
+                settings.seed_manager_password,
+            ),
+            "role": "manager",
+        },
+        {
+            "username": "admin",
+            "email": "admin@relay.local",
+            "password": require_seed_password(
+                "SEED_ADMIN_PASSWORD",
+                settings.seed_admin_password,
+            ),
+            "role": "admin",
+        },
+    ]
+
     db = SessionLocal()
 
     try:
-        users = [
-            {
-                "username": "sales",
-                "email": "sales@relay.local",
-                "password": "Sales123!",
-                "role": "sales_rep",
-            },
-            {
-                "username": "manager",
-                "email": "manager@relay.local",
-                "password": "Manager123!",
-                "role": "manager",
-            },
-            {
-                "username": "admin",
-                "email": "admin@relay.local",
-                "password": "Admin123!",
-                "role": "admin",
-            },
-        ]
 
         for user_data in users:
             existing_user = (
