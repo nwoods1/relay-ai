@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 from app.schemas.ai import ParsedQuoteRequest
 from app.core.exceptions import (
@@ -53,7 +54,7 @@ def quote_headers(
 def test_sales_cannot_access_agentops():
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.get(
@@ -69,7 +70,7 @@ def test_sales_cannot_access_agentops():
 def test_manager_can_access_agentops_runs():
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     response = client.get(
@@ -89,7 +90,7 @@ def test_manager_can_access_agentops_runs():
 def test_admin_can_access_agentops_runs():
     admin_token = get_token(
         "admin",
-        "Admin123!",
+        settings.seed_admin_password,
     )
 
     response = client.get(
@@ -109,7 +110,7 @@ def test_admin_can_access_agentops_runs():
 def test_agentops_summary():
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     response = client.get(
@@ -136,7 +137,7 @@ def test_agentops_summary():
 def test_unknown_workflow_run_returns_404():
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     response = client.get(
@@ -169,7 +170,7 @@ def test_quote_creates_workflow_run(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     quote_response = client.post(
@@ -195,7 +196,7 @@ def test_quote_creates_workflow_run(
 
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     agentops_response = client.get(
@@ -243,7 +244,7 @@ def test_approval_workflow_updates_agentops(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     quote_response = client.post(
@@ -269,7 +270,7 @@ def test_approval_workflow_updates_agentops(
 
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     before_approval = client.get(
@@ -349,7 +350,7 @@ def test_failed_workflow_is_visible_in_agentops(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     quote_response = client.post(
@@ -375,7 +376,7 @@ def test_failed_workflow_is_visible_in_agentops(
 
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     response = client.get(
@@ -421,7 +422,7 @@ def test_idempotent_request_creates_one_workflow_run(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     key = str(uuid4())
@@ -467,7 +468,7 @@ def test_idempotent_request_creates_one_workflow_run(
 
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     runs_response = client.get(

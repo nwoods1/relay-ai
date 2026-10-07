@@ -37,7 +37,7 @@ export default function Login(
   const [
     password,
     setPassword,
-  ] = useState("Sales123!");
+  ] = useState("");
 
   const [
     error,
@@ -54,19 +54,19 @@ export default function Login(
 
   function setSales() {
     setUsername("sales");
-    setPassword("Sales123!");
+    setPassword("");
   }
 
 
   function setManager() {
     setUsername("manager");
-    setPassword("Manager123!");
+    setPassword("");
   }
 
 
   function setAdmin() {
     setUsername("admin");
-    setPassword("Admin123!");
+    setPassword("");
   }
 
 

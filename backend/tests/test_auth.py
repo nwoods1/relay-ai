@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 
 
@@ -11,7 +12,7 @@ def test_login_success():
         "/api/auth/login",
         json={
             "username": "sales",
-            "password": "Sales123!",
+            "password": settings.seed_sales_password,
         },
     )
 
@@ -40,7 +41,7 @@ def get_sales_token():
         "/api/auth/login",
         json={
             "username": "sales",
-            "password": "Sales123!",
+            "password": settings.seed_sales_password,
         },
     )
 

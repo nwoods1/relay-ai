@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 from app.schemas.ai import ParsedQuoteRequest
 
@@ -15,7 +16,7 @@ def get_sales_token():
         "/api/auth/login",
         json={
             "username": "sales",
-            "password": "Sales123!",
+            "password": settings.seed_sales_password,
         },
     )
 

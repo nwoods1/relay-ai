@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 from app.schemas.agent_intent import (
     AgentIntent,
@@ -103,7 +104,7 @@ def test_inventory_question_routes_to_inventory_agent(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(
@@ -173,7 +174,7 @@ def test_quote_question_routes_to_quote_agent(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(
@@ -224,7 +225,7 @@ def test_sales_cannot_list_approvals(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(
@@ -277,7 +278,7 @@ def test_manager_can_list_approvals(
 
     token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     response = client.post(
@@ -374,7 +375,7 @@ def test_previous_product_resolves_across_turns(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     first = client.post(
@@ -510,7 +511,7 @@ def test_new_conversation_does_not_inherit_context(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     first = client.post(
@@ -586,7 +587,7 @@ def test_general_message_routes_to_general_agent(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(

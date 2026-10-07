@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 from app.schemas.ai import ParsedQuoteRequest
 
@@ -62,7 +63,7 @@ def test_duplicate_quote_returns_cached_response(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     key = str(
@@ -122,7 +123,7 @@ def test_same_key_different_request_returns_409(
 
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     key = str(
@@ -158,7 +159,7 @@ def test_same_key_different_request_returns_409(
 def test_quote_requires_idempotency_key():
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(
@@ -178,7 +179,7 @@ def test_quote_requires_idempotency_key():
 def test_short_idempotency_key_is_rejected():
     token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(

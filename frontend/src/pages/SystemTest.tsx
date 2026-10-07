@@ -27,7 +27,7 @@ export default function SystemTest() {
     useState<string>("sales");
 
   const [password, setPassword] =
-    useState<string>("Sales123!");
+    useState<string>("");
 
   const [message, setMessage] =
     useState<string>(
@@ -119,7 +119,7 @@ export default function SystemTest() {
       <button
         onClick={() => {
           setUsername("sales");
-          setPassword("Sales123!");
+          setPassword("");
         }}
       >
         Sales
@@ -128,7 +128,7 @@ export default function SystemTest() {
       <button
         onClick={() => {
           setUsername("manager");
-          setPassword("Manager123!");
+          setPassword("");
         }}
       >
         Manager
@@ -137,7 +137,7 @@ export default function SystemTest() {
       <button
         onClick={() => {
           setUsername("admin");
-          setPassword("Admin123!");
+          setPassword("");
         }}
       >
         Admin

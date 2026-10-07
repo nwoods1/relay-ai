@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 from app.schemas.ai import ParsedQuoteRequest
 
@@ -56,7 +57,7 @@ def test_large_quote_waits_for_approval(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     response = client.post(
@@ -102,7 +103,7 @@ def test_sales_cannot_approve(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     quote_response = client.post(
@@ -159,12 +160,12 @@ def test_manager_can_approve(
 
     sales_token = get_token(
         "sales",
-        "Sales123!",
+        settings.seed_sales_password,
     )
 
     manager_token = get_token(
         "manager",
-        "Manager123!",
+        settings.seed_manager_password,
     )
 
     quote_response = client.post(
