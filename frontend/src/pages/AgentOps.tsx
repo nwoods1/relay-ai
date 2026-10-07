@@ -39,35 +39,42 @@ export default function AgentOps() {
   >(null);
 
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [
+  function loadData() {
+    Promise.all([
+      getAgentOpsSummary(),
+      getWorkflowRuns(),
+    ])
+      .then(([
         summaryData,
         runData,
-      ] = await Promise.all([
-        getAgentOpsSummary(),
-        getWorkflowRuns(),
-      ]);
+      ]) => {
+        setSummary(
+          summaryData
+        );
 
-      setSummary(
-        summaryData
-      );
+        setRuns(
+          runData
+        );
 
-      setRuns(
-        runData
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load AgentOps"
-      );
-    } finally {
-      setLoading(false);
-    }
+        setError(null);
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load AgentOps"
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }
+
+
+  function retry() {
+    setLoading(true);
+    setError(null);
+    loadData();
   }
 
 
@@ -91,7 +98,7 @@ export default function AgentOps() {
         <p>{error}</p>
 
         <button
-          onClick={loadData}
+          onClick={retry}
           className="mt-4 rounded-md border px-4 py-2"
         >
           Retry
@@ -168,7 +175,7 @@ export default function AgentOps() {
           </h2>
 
           <button
-            onClick={loadData}
+            onClick={retry}
             className="rounded-md border px-3 py-2 text-sm"
           >
             Refresh
