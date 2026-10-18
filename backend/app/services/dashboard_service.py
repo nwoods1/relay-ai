@@ -29,7 +29,10 @@ from app.schemas.dashboard import (
 )
 
 
+# "ready" is the terminal status of a quote
+# workflow that finished without needing approval.
 TERMINAL_WORKFLOW_STATUSES = {
+    "ready",
     "completed",
     "approved",
     "rejected",

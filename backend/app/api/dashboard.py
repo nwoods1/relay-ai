@@ -146,7 +146,8 @@ def dashboard_approvals(
         le=100,
     ),
     status: str | None = Query(
-        default=None
+        default=None,
+        pattern="^(pending|approved|rejected)$",
     ),
     db: Session = Depends(
         get_db
