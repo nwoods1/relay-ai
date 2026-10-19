@@ -60,3 +60,79 @@ export interface DashboardWarehouseResponse {
   items: DashboardWarehouse[];
   total: number;
 }
+
+export interface DashboardQuoteItem {
+  id: number;
+  thread_id: string;
+  operation: string;
+
+  user_id: number;
+  username: string;
+  user_role: string;
+
+  status: string;
+  current_node: string | null;
+  requires_approval: boolean;
+
+  error_type: string | null;
+  error_message: string | null;
+
+  retry_count: number;
+
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+
+  llm_latency_ms: number | null;
+  duration_ms: number | null;
+
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface DashboardQuoteResponse {
+  items: DashboardQuoteItem[];
+  total: number;
+}
+
+export interface DashboardApprovalItem {
+  id: number;
+  thread_id: string;
+  status: string;
+
+  requested_by_user_id: number;
+  decided_by_user_id: number | null;
+
+  decision_comment: string | null;
+
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface DashboardApprovalResponse {
+  items: DashboardApprovalItem[];
+  total: number;
+}
+
+export interface DashboardActivityItem {
+  id: number;
+  workflow_run_id: number;
+
+  thread_id: string;
+  operation: string;
+  username: string;
+
+  event_type: string;
+  node_name: string | null;
+  status: string;
+
+  message: string | null;
+  metadata_json: string | null;
+
+  created_at: string;
+}
+
+export interface DashboardActivityResponse {
+  items: DashboardActivityItem[];
+  total: number;
+}

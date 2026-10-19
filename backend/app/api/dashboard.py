@@ -102,7 +102,7 @@ def dashboard_inventory(
     ),
     current_user: User = Depends(
         require_permission(
-            "monitoring:read"
+            "inventory:read"
         )
     ),
 ):
@@ -124,7 +124,7 @@ def dashboard_warehouses(
     ),
     current_user: User = Depends(
         require_permission(
-            "monitoring:read"
+            "inventory:read"
         )
     ),
 ):

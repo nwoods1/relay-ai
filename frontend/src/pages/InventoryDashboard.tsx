@@ -5,7 +5,6 @@ import {
 
 import {
   getDashboardInventory,
-  getDashboardOverview,
   getDashboardWarehouses,
 } from "../api/dashboard";
 
@@ -16,16 +15,18 @@ import WarehouseCard from "../components/dashboard/WarehouseCard";
 
 import type {
   DashboardInventoryItem,
-  DashboardOverview,
   DashboardWarehouse,
 } from "../types/dashboard";
 
+
 interface ApiError {
   status?: number;
+
   data?: {
     detail?: string;
   };
 }
+
 
 function getErrorMessage(
   error: unknown
@@ -33,18 +34,22 @@ function getErrorMessage(
   const apiError =
     error as ApiError;
 
-  if (apiError?.status === 401) {
+  if (
+    apiError?.status === 401
+  ) {
     return "Your session has expired. Please log in again.";
   }
 
-  if (apiError?.status === 403) {
-    return "You don't have permission to view the operations dashboard.";
+  if (
+    apiError?.status === 403
+  ) {
+    return "You don't have permission to view inventory.";
   }
 
   if (
     apiError?.data?.detail &&
-    typeof apiError.data.detail ===
-      "string"
+    typeof apiError.data
+      .detail === "string"
   ) {
     return apiError.data.detail;
   }
@@ -52,15 +57,8 @@ function getErrorMessage(
   return "Unable to load inventory data.";
 }
 
-export default function InventoryDashboard() {
-  const [
-    overview,
-    setOverview,
-  ] =
-    useState<DashboardOverview | null>(
-      null
-    );
 
+export default function InventoryDashboard() {
   const [
     inventory,
     setInventory,
@@ -93,7 +91,10 @@ export default function InventoryDashboard() {
   const [
     error,
     setError,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   useEffect(() => {
     async function loadDashboard() {
@@ -102,18 +103,12 @@ export default function InventoryDashboard() {
         setError(null);
 
         const [
-          overviewResponse,
           inventoryResponse,
           warehouseResponse,
         ] = await Promise.all([
-          getDashboardOverview(),
           getDashboardInventory(),
           getDashboardWarehouses(),
         ]);
-
-        setOverview(
-          overviewResponse
-        );
 
         setInventory(
           inventoryResponse.items
@@ -122,10 +117,14 @@ export default function InventoryDashboard() {
         setWarehouses(
           warehouseResponse.items
         );
+
       } catch (error) {
         setError(
-          getErrorMessage(error)
+          getErrorMessage(
+            error
+          )
         );
+
       } finally {
         setLoading(false);
       }
@@ -133,6 +132,7 @@ export default function InventoryDashboard() {
 
     void loadDashboard();
   }, []);
+
 
   async function handleSearch() {
     try {
@@ -147,14 +147,19 @@ export default function InventoryDashboard() {
       setInventory(
         response.items
       );
+
     } catch (error) {
       setError(
-        getErrorMessage(error)
+        getErrorMessage(
+          error
+        )
       );
+
     } finally {
       setSearching(false);
     }
   }
+
 
   async function handleClearSearch() {
     setSearch("");
@@ -169,22 +174,66 @@ export default function InventoryDashboard() {
       setInventory(
         response.items
       );
+
     } catch (error) {
       setError(
-        getErrorMessage(error)
+        getErrorMessage(
+          error
+        )
       );
+
     } finally {
       setSearching(false);
     }
   }
 
+
   function handleSearchSubmit(
-    event: React.FormEvent<HTMLFormElement>
+    event:
+      React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
     void handleSearch();
   }
+
+
+  const totalProducts =
+    inventory.length;
+
+  const totalPhysical =
+    inventory.reduce(
+      (
+        total,
+        item
+      ) =>
+        total +
+        item.physical_quantity,
+      0
+    );
+
+  const totalReserved =
+    inventory.reduce(
+      (
+        total,
+        item
+      ) =>
+        total +
+        item.reserved_quantity,
+      0
+    );
+
+  const totalSellable =
+    inventory.reduce(
+      (
+        total,
+        item
+      ) =>
+        total +
+        item.sellable_quantity,
+      0
+    );
+
 
   if (loading) {
     return (
@@ -198,12 +247,17 @@ export default function InventoryDashboard() {
     );
   }
 
-  if (error && !overview) {
+
+  if (
+    error &&
+    inventory.length === 0 &&
+    warehouses.length === 0
+  ) {
     return (
       <DashboardLayout>
         <div className="rounded-xl border border-red-200 bg-red-50 p-6">
           <h2 className="font-semibold text-red-800">
-            Unable to load dashboard
+            Unable to load inventory
           </h2>
 
           <p className="mt-2 text-sm text-red-700">
@@ -214,12 +268,13 @@ export default function InventoryDashboard() {
     );
   }
 
+
   return (
     <DashboardLayout>
       <div>
         <div>
           <p className="text-sm font-medium text-slate-500">
-            Operations
+            Inventory
           </p>
 
           <h2 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
@@ -228,47 +283,48 @@ export default function InventoryDashboard() {
 
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             View product availability,
-            reserved inventory, sellable
-            stock, and warehouse-level
-            inventory across the business.
+            reserved inventory,
+            sellable stock, and
+            warehouse-level inventory
+            across the business.
           </p>
         </div>
 
-        {overview && (
-          <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <InventoryStatCard
-              title="Products"
-              value={
-                overview.total_products
-              }
-              description="Products in the catalog"
-            />
 
-            <InventoryStatCard
-              title="Physical Inventory"
-              value={
-                overview.total_physical_inventory
-              }
-              description="Total units physically available"
-            />
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <InventoryStatCard
+            title="Products"
+            value={
+              totalProducts
+            }
+            description="Products in inventory"
+          />
 
-            <InventoryStatCard
-              title="Reserved Inventory"
-              value={
-                overview.total_reserved_inventory
-              }
-              description="Units already reserved"
-            />
+          <InventoryStatCard
+            title="Physical Inventory"
+            value={
+              totalPhysical
+            }
+            description="Total units physically available"
+          />
 
-            <InventoryStatCard
-              title="Sellable Inventory"
-              value={
-                overview.total_sellable_inventory
-              }
-              description="Units currently available to sell"
-            />
-          </section>
-        )}
+          <InventoryStatCard
+            title="Reserved Inventory"
+            value={
+              totalReserved
+            }
+            description="Units already reserved"
+          />
+
+          <InventoryStatCard
+            title="Sellable Inventory"
+            value={
+              totalSellable
+            }
+            description="Units currently available to sell"
+          />
+        </section>
+
 
         <section className="mt-10">
           <div className="mb-4">
@@ -282,6 +338,7 @@ export default function InventoryDashboard() {
               category.
             </p>
           </div>
+
 
           <form
             onSubmit={
@@ -303,7 +360,9 @@ export default function InventoryDashboard() {
 
             <button
               type="submit"
-              disabled={searching}
+              disabled={
+                searching
+              }
               className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {searching
@@ -316,12 +375,15 @@ export default function InventoryDashboard() {
               onClick={() =>
                 void handleClearSearch()
               }
-              disabled={searching}
+              disabled={
+                searching
+              }
               className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Clear
             </button>
           </form>
+
 
           {error && (
             <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -329,10 +391,12 @@ export default function InventoryDashboard() {
             </div>
           )}
 
+
           <InventoryTable
             items={inventory}
           />
         </section>
+
 
         <section className="mt-12">
           <div className="mb-5">
@@ -346,6 +410,7 @@ export default function InventoryDashboard() {
               warehouse.
             </p>
           </div>
+
 
           {warehouses.length ===
           0 ? (

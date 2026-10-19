@@ -475,13 +475,6 @@ def handle_confirmation(
     clear_pending_action(
         db=db,
         conversation=conversation,
-        action=(
-        "submitted_for_approval"
-        ),
-        details={
-            "thread_id":
-                thread_id
-        },
     )
 
     response_text = (
@@ -538,13 +531,6 @@ def handle_rejection(
     clear_pending_action(
         db=db,
         conversation=conversation,
-        action=(
-            "approval_submission_cancelled"
-        ),
-        details={
-            "thread_id":
-                thread_id
-        },
     )
 
     response_text = (
