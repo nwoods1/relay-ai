@@ -7,6 +7,7 @@ import Login from "./components/Login";
 import Chat from "./pages/Chat";
 import InventoryDashboard from "./pages/InventoryDashboard";
 import OperationsDashboard from "./pages/OperationsDashboard";
+import AgentOpsDashboard from "./pages/AgentOpsDashboard";
 
 import {
   clearAccessToken,
@@ -22,7 +23,8 @@ import {
 type AppView =
   | "chat"
   | "inventory"
-  | "operations";
+  | "operations"
+  | "agentops";
 
 
 function App() {
@@ -130,16 +132,25 @@ function App() {
       label: "Assistant",
       view: "chat",
     },
+
     {
       label: "Inventory",
       view: "inventory",
     },
+
     ...(user.role === "manager" ||
     user.role === "admin"
       ? [
           {
             label: "Operations",
-            view: "operations" as AppView,
+            view:
+              "operations" as AppView,
+          },
+
+          {
+            label: "AgentOps",
+            view:
+              "agentops" as AppView,
           },
         ]
       : []),
@@ -241,19 +252,23 @@ function App() {
       </header>
 
 
-      {currentView ===
-      "inventory" ? (
-        <InventoryDashboard />
+    {currentView ===
+    "inventory" ? (
+      <InventoryDashboard />
 
-      ) : currentView ===
-        "operations" ? (
-        <OperationsDashboard />
+    ) : currentView ===
+      "operations" ? (
+      <OperationsDashboard />
 
-      ) : (
-        <Chat
-          user={user}
-        />
-      )}
+    ) : currentView ===
+      "agentops" ? (
+      <AgentOpsDashboard />
+
+    ) : (
+      <Chat
+        user={user}
+      />
+    )}
     </div>
   );
 }
