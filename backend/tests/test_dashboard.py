@@ -19,6 +19,20 @@ DASHBOARD_PATHS = [
 ]
 
 
+SALES_ALLOWED_DASHBOARD_PATHS = [
+    "/api/dashboard/inventory",
+    "/api/dashboard/warehouses",
+]
+
+
+SALES_RESTRICTED_DASHBOARD_PATHS = [
+    "/api/dashboard/overview",
+    "/api/dashboard/quotes",
+    "/api/dashboard/approvals",
+    "/api/dashboard/activity",
+]
+
+
 def get_token(
     username: str,
     password: str,
@@ -54,6 +68,15 @@ def manager_headers() -> dict:
     )
 
 
+def sales_headers() -> dict:
+    return auth_headers(
+        get_token(
+            "sales",
+            settings.seed_sales_password,
+        )
+    )
+
+
 def test_dashboard_requires_authentication():
     for path in DASHBOARD_PATHS:
         response = client.get(path)
@@ -61,15 +84,26 @@ def test_dashboard_requires_authentication():
         assert response.status_code == 401, path
 
 
-def test_sales_cannot_access_dashboard():
-    headers = auth_headers(
-        get_token(
-            "sales",
-            settings.seed_sales_password,
-        )
-    )
+def test_sales_can_access_inventory_dashboard():
+    headers = sales_headers()
 
-    for path in DASHBOARD_PATHS:
+    for path in (
+        SALES_ALLOWED_DASHBOARD_PATHS
+    ):
+        response = client.get(
+            path,
+            headers=headers,
+        )
+
+        assert response.status_code == 200, path
+
+
+def test_sales_cannot_access_manager_dashboard():
+    headers = sales_headers()
+
+    for path in (
+        SALES_RESTRICTED_DASHBOARD_PATHS
+    ):
         response = client.get(
             path,
             headers=headers,
@@ -146,13 +180,56 @@ def test_dashboard_overview_workflow_counts_are_consistent():
     )
 
 
+def test_sales_can_read_inventory_data():
+    response = client.get(
+        "/api/dashboard/inventory",
+        params={
+            "search":
+                "JACKET-BETA-AR-M"
+        },
+        headers=sales_headers(),
+    )
+
+    assert response.status_code == 200
+
+    items = response.json()["items"]
+
+    shell = next(
+        item
+        for item in items
+        if item["sku"]
+        == "JACKET-BETA-AR-M"
+    )
+
+    assert (
+        shell["physical_quantity"]
+        == 105
+    )
+
+    assert (
+        shell["reserved_quantity"]
+        == 16
+    )
+
+    assert (
+        shell["sellable_quantity"]
+        == 89
+    )
+
+
 def test_dashboard_inventory_shell_totals():
     headers = manager_headers()
 
-    for search in ("shell", "JACKET-BETA-AR-M"):
+    for search in (
+        "shell",
+        "JACKET-BETA-AR-M",
+    ):
         response = client.get(
             "/api/dashboard/inventory",
-            params={"search": search},
+            params={
+                "search":
+                    search
+            },
             headers=headers,
         )
 
@@ -163,12 +240,24 @@ def test_dashboard_inventory_shell_totals():
         shell = next(
             item
             for item in items
-            if item["sku"] == "JACKET-BETA-AR-M"
+            if item["sku"]
+            == "JACKET-BETA-AR-M"
         )
 
-        assert shell["physical_quantity"] == 105
-        assert shell["reserved_quantity"] == 16
-        assert shell["sellable_quantity"] == 89
+        assert (
+            shell["physical_quantity"]
+            == 105
+        )
+
+        assert (
+            shell["reserved_quantity"]
+            == 16
+        )
+
+        assert (
+            shell["sellable_quantity"]
+            == 89
+        )
 
 
 def test_dashboard_van_warehouse_shell_inventory():
@@ -181,23 +270,60 @@ def test_dashboard_van_warehouse_shell_inventory():
 
     van = next(
         warehouse
-        for warehouse in response.json()["items"]
+        for warehouse
+        in response.json()["items"]
         if warehouse["code"] == "VAN"
     )
 
     shell = next(
         row
-        for row in van["inventory"]
-        if row["sku"] == "JACKET-BETA-AR-M"
+        for row
+        in van["inventory"]
+        if row["sku"]
+        == "JACKET-BETA-AR-M"
     )
 
-    assert shell["physical_quantity"] == 42
-    assert shell["reserved_quantity"] == 7
-    assert shell["sellable_quantity"] == 35
+    assert (
+        shell["physical_quantity"]
+        == 42
+    )
 
-    assert van["total_physical"] == sum(
-        row["physical_quantity"]
-        for row in van["inventory"]
+    assert (
+        shell["reserved_quantity"]
+        == 7
+    )
+
+    assert (
+        shell["sellable_quantity"]
+        == 35
+    )
+
+    assert (
+        van["total_physical"]
+        == sum(
+            row["physical_quantity"]
+            for row
+            in van["inventory"]
+        )
+    )
+
+
+def test_sales_can_read_warehouse_data():
+    response = client.get(
+        "/api/dashboard/warehouses",
+        headers=sales_headers(),
+    )
+
+    assert response.status_code == 200
+
+    items = response.json()["items"]
+
+    assert len(items) > 0
+
+    assert any(
+        warehouse["code"]
+        == "VAN"
+        for warehouse in items
     )
 
 
@@ -206,7 +332,10 @@ def test_dashboard_quotes_newest_first_and_filtered():
 
     response = client.get(
         "/api/dashboard/quotes",
-        params={"limit": 5},
+        params={
+            "limit":
+                5
+        },
         headers=headers,
     )
 
@@ -228,7 +357,10 @@ def test_dashboard_quotes_newest_first_and_filtered():
 
     response = client.get(
         "/api/dashboard/quotes",
-        params={"status": "failed"},
+        params={
+            "status":
+                "failed"
+        },
         headers=headers,
     )
 
@@ -236,7 +368,8 @@ def test_dashboard_quotes_newest_first_and_filtered():
 
     assert all(
         item["status"] == "failed"
-        for item in response.json()["items"]
+        for item
+        in response.json()["items"]
     )
 
 
@@ -248,10 +381,16 @@ def test_dashboard_limits_are_bounded():
         "/api/dashboard/approvals",
         "/api/dashboard/activity",
     ):
-        for limit in (0, 101):
+        for limit in (
+            0,
+            101,
+        ):
             response = client.get(
                 path,
-                params={"limit": limit},
+                params={
+                    "limit":
+                        limit
+                },
                 headers=headers,
             )
 
@@ -268,7 +407,10 @@ def test_dashboard_approvals_status_filter():
     ):
         response = client.get(
             "/api/dashboard/approvals",
-            params={"status": status},
+            params={
+                "status":
+                    status
+            },
             headers=headers,
         )
 
@@ -276,12 +418,16 @@ def test_dashboard_approvals_status_filter():
 
         assert all(
             item["status"] == status
-            for item in response.json()["items"]
+            for item
+            in response.json()["items"]
         )
 
     response = client.get(
         "/api/dashboard/approvals",
-        params={"status": "bogus"},
+        params={
+            "status":
+                "bogus"
+        },
         headers=headers,
     )
 
@@ -291,7 +437,10 @@ def test_dashboard_approvals_status_filter():
 def test_dashboard_activity_newest_first():
     response = client.get(
         "/api/dashboard/activity",
-        params={"limit": 10},
+        params={
+            "limit":
+                10
+        },
         headers=manager_headers(),
     )
 

@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -35,6 +34,18 @@ interface ApiError {
     detail?: string;
   };
 }
+
+
+type OperationsData = {
+  quotes:
+    DashboardQuoteItem[];
+
+  approvals:
+    DashboardApprovalItem[];
+
+  activity:
+    DashboardActivityItem[];
+};
 
 
 function getErrorMessage(
@@ -88,6 +99,43 @@ function getErrorMessage(
 }
 
 
+async function fetchOperationsData(
+  approvalStatus: string
+): Promise<OperationsData> {
+  const [
+    quoteResponse,
+    approvalResponse,
+    activityResponse,
+  ] = await Promise.all([
+    getDashboardQuotes({
+      limit: 20,
+    }),
+
+    getDashboardApprovals({
+      limit: 20,
+      status:
+        approvalStatus ||
+        undefined,
+    }),
+
+    getDashboardActivity({
+      limit: 30,
+    }),
+  ]);
+
+  return {
+    quotes:
+      quoteResponse.items,
+
+    approvals:
+      approvalResponse.items,
+
+    activity:
+      activityResponse.items,
+  };
+}
+
+
 export default function OperationsDashboard() {
   const [
     quotes,
@@ -114,6 +162,11 @@ export default function OperationsDashboard() {
     loading,
     setLoading,
   ] = useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
 
   const [
     error,
@@ -158,63 +211,91 @@ export default function OperationsDashboard() {
   >(null);
 
 
-  const loadOperations =
-    useCallback(
-      async () => {
-        try {
-          setLoading(true);
-          setError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-          const [
-            quoteResponse,
-            approvalResponse,
-            activityResponse,
-          ] =
-            await Promise.all([
-              getDashboardQuotes({
-                limit: 20,
-              }),
+    void fetchOperationsData(
+      approvalStatus
+    )
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
 
-              getDashboardApprovals({
-                limit: 20,
-                status:
-                  approvalStatus ||
-                  undefined,
-              }),
+        setQuotes(
+          data.quotes
+        );
 
-              getDashboardActivity({
-                limit: 30,
-              }),
-            ]);
+        setApprovals(
+          data.approvals
+        );
 
-          setQuotes(
-            quoteResponse.items
-          );
+        setActivity(
+          data.activity
+        );
 
-          setApprovals(
-            approvalResponse.items
-          );
+        setError(null);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
 
-          setActivity(
-            activityResponse.items
-          );
-        } catch (error) {
-          setError(
-            getErrorMessage(
-              error
-            )
-          );
-        } finally {
+        setError(
+          getErrorMessage(
+            error
+          )
+        );
+      })
+      .finally(() => {
+        if (
+          !cancelled
+        ) {
           setLoading(false);
         }
-      },
-      [approvalStatus]
-    );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    approvalStatus,
+  ]);
 
 
-  useEffect(() => {
-    void loadOperations();
-  }, [loadOperations]);
+  async function refreshOperations() {
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      const data =
+        await fetchOperationsData(
+          approvalStatus
+        );
+
+      setQuotes(
+        data.quotes
+      );
+
+      setApprovals(
+        data.approvals
+      );
+
+      setActivity(
+        data.activity
+      );
+
+    } catch (error) {
+      setError(
+        getErrorMessage(
+          error
+        )
+      );
+
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
 
   function openApprovalModal(
@@ -224,7 +305,10 @@ export default function OperationsDashboard() {
       ApprovalDecision
   ) {
     setError(null);
-    setSuccessMessage(null);
+
+    setSuccessMessage(
+      null
+    );
 
     setSelectedApproval(
       approval
@@ -275,7 +359,10 @@ export default function OperationsDashboard() {
       );
 
       setError(null);
-      setSuccessMessage(null);
+
+      setSuccessMessage(
+        null
+      );
 
       await decideQuoteApproval(
         threadId,
@@ -297,7 +384,7 @@ export default function OperationsDashboard() {
           : "Quote rejected successfully."
       );
 
-      await loadOperations();
+      await refreshOperations();
 
     } catch (error) {
       setError(
@@ -314,11 +401,26 @@ export default function OperationsDashboard() {
   }
 
 
+  function handleApprovalStatusChange(
+    value: string
+  ) {
+    setSuccessMessage(
+      null
+    );
+
+    setError(null);
+
+    setApprovalStatus(
+      value
+    );
+  }
+
+
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex min-h-[400px] items-center justify-center">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#778173]">
             Loading manager operations...
           </p>
         </div>
@@ -335,7 +437,7 @@ export default function OperationsDashboard() {
   ) {
     return (
       <DashboardLayout>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-[22px] border border-red-200 bg-red-50 p-6">
           <h2 className="font-semibold text-red-800">
             Unable to load operations
           </h2>
@@ -354,15 +456,15 @@ export default function OperationsDashboard() {
       <div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-500">
+            <p className="text-sm font-medium text-[#719451]">
               Manager Operations
             </p>
 
-            <h2 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-[#182116]">
               Quotes & Approvals
-            </h2>
+            </h1>
 
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#70796b]">
               Review quote workflows,
               manage approval requests,
               and inspect recent workflow
@@ -370,32 +472,37 @@ export default function OperationsDashboard() {
             </p>
           </div>
 
+
           <button
             type="button"
-            disabled={loading}
+            disabled={
+              refreshing
+            }
             onClick={() => {
               setSuccessMessage(
                 null
               );
 
-              void loadOperations();
+              void refreshOperations();
             }}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-fit rounded-xl border border-[#d9ded4] bg-white px-4 py-2.5 text-sm font-medium text-[#33402e] shadow-sm transition hover:bg-[#f7f8f5] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Refresh
+            {refreshing
+              ? "Refreshing..."
+              : "Refresh"}
           </button>
         </div>
 
 
         {successMessage && (
-          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+          <div className="mt-6 rounded-xl border border-[#d4e2cb] bg-[#f1f7ec] p-4 text-sm text-[#55733e]">
             {successMessage}
           </div>
         )}
 
 
         {error && (
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -404,21 +511,22 @@ export default function OperationsDashboard() {
         <section className="mt-10">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold text-[#202b1d]">
                 Approvals
-              </h3>
+              </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-[#7a8375]">
                 Review quote requests
                 that require manager
                 approval.
               </p>
             </div>
 
+
             <div>
               <label
                 htmlFor="approval-status"
-                className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
+                className="mb-1 block text-xs font-medium uppercase tracking-[0.1em] text-[#858d80]"
               >
                 Status
               </label>
@@ -428,16 +536,17 @@ export default function OperationsDashboard() {
                 value={
                   approvalStatus
                 }
-                onChange={(event) => {
-                  setSuccessMessage(
-                    null
-                  );
-
-                  setApprovalStatus(
+                disabled={
+                  refreshing
+                }
+                onChange={(
+                  event
+                ) =>
+                  handleApprovalStatusChange(
                     event.target.value
-                  );
-                }}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  )
+                }
+                className="rounded-xl border border-[#d9dfd3] bg-white px-3 py-2 text-sm text-[#45503f] outline-none transition focus:border-[#8aac69] focus:ring-4 focus:ring-[#8aac69]/10 disabled:opacity-60"
               >
                 <option value="pending">
                   Pending
@@ -460,7 +569,9 @@ export default function OperationsDashboard() {
 
 
           <ApprovalTable
-            items={approvals}
+            items={
+              approvals
+            }
             actionLoadingThreadId={
               actionLoadingThreadId
             }
@@ -486,11 +597,11 @@ export default function OperationsDashboard() {
 
         <section className="mt-12">
           <div className="mb-5">
-            <h3 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-[#202b1d]">
               Recent Quotes
-            </h3>
+            </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[#7a8375]">
               Recent quote workflow
               runs and their current
               status.
@@ -498,25 +609,29 @@ export default function OperationsDashboard() {
           </div>
 
           <QuoteTable
-            items={quotes}
+            items={
+              quotes
+            }
           />
         </section>
 
 
         <section className="mt-12">
           <div className="mb-5">
-            <h3 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-[#202b1d]">
               Recent Activity
-            </h3>
+            </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[#7a8375]">
               Recent workflow events
               across Relay AI.
             </p>
           </div>
 
           <ActivityTable
-            items={activity}
+            items={
+              activity
+            }
           />
         </section>
       </div>

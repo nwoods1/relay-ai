@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -44,13 +43,6 @@ export default function ApprovalActionModal({
     setComment,
   ] = useState("");
 
-
-  useEffect(() => {
-    setComment("");
-  }, [
-    approval,
-    decision,
-  ]);
 
 
   if (
